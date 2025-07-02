@@ -31,7 +31,7 @@ class InteractiveVideoWidget(QLabel):
         """)
         self.setAlignment(Qt.AlignCenter)
         self.setText("No Camera Connected\n\nConnect camera to start drawing parking spots")
-        self.setScaledContents(True)
+        # Remove setScaledContents(True) to handle scaling manually
         
         # Drawing state
         self.drawing_mode = self.MODE_VIEW
@@ -47,8 +47,8 @@ class InteractiveVideoWidget(QLabel):
         # Display parameters for coordinate conversion
         self.frame_width = 0
         self.frame_height = 0
-        self.pixmap_width = 0
-        self.pixmap_height = 0
+        self.display_width = 0
+        self.display_height = 0
         self.display_offset_x = 0
         self.display_offset_y = 0
         
@@ -102,26 +102,34 @@ class InteractiveVideoWidget(QLabel):
         self.frame_width = w
         self.frame_height = h
         
-        # Scale the image to fit the label while maintaining aspect ratio
-        pixmap = QPixmap.fromImage(qt_image)
-        scaled_pixmap = pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        # Get widget size
+        widget_width = self.width()
+        widget_height = self.height()
         
-        # Store the scaled pixmap dimensions and calculate display area
-        self.pixmap_width = scaled_pixmap.width()
-        self.pixmap_height = scaled_pixmap.height()
+        # Calculate scaled dimensions while maintaining aspect ratio
+        frame_aspect = w / h
+        widget_aspect = widget_width / widget_height
         
-        # Calculate offset to center the pixmap within the widget
-        widget_size = self.size()
-        self.display_offset_x = (widget_size.width() - self.pixmap_width) // 2
-        self.display_offset_y = (widget_size.height() - self.pixmap_height) // 2
-        
-        # Calculate scaling factors for coordinate conversion
-        if self.pixmap_width > 0 and self.pixmap_height > 0:
-            self.scale_x = self.frame_width / self.pixmap_width
-            self.scale_y = self.frame_height / self.pixmap_height
+        if frame_aspect > widget_aspect:
+            # Frame is wider than widget - fit to width
+            self.display_width = widget_width
+            self.display_height = int(widget_width / frame_aspect)
         else:
-            self.scale_x = 1.0
-            self.scale_y = 1.0
+            # Frame is taller than widget - fit to height
+            self.display_height = widget_height
+            self.display_width = int(widget_height * frame_aspect)
+        
+        # Calculate offset to center the display area
+        self.display_offset_x = (widget_width - self.display_width) // 2
+        self.display_offset_y = (widget_height - self.display_height) // 2
+        
+        # Calculate scaling factors
+        self.scale_x = w / self.display_width
+        self.scale_y = h / self.display_height
+        
+        # Create and scale the pixmap
+        pixmap = QPixmap.fromImage(qt_image)
+        scaled_pixmap = pixmap.scaled(self.display_width, self.display_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         
         self.setPixmap(scaled_pixmap)
     
@@ -151,20 +159,31 @@ class InteractiveVideoWidget(QLabel):
     def widget_to_frame_coords(self, widget_point: QPoint) -> Tuple[int, int]:
         """Convert widget coordinates to frame coordinates"""
         # Check if we have valid display parameters
-        if not hasattr(self, 'pixmap_width') or not hasattr(self, 'frame_width'):
+        if not hasattr(self, 'display_width') or not hasattr(self, 'frame_width'):
             return (0, 0)
         
-        # Adjust click coordinates by removing the display offset
-        pixmap_x = widget_point.x() - self.display_offset_x
-        pixmap_y = widget_point.y() - self.display_offset_y
+        # Get click coordinates relative to widget
+        click_x = widget_point.x()
+        click_y = widget_point.y()
         
-        # Clamp to pixmap bounds (ensure we're within the actual image area)
-        pixmap_x = max(0, min(pixmap_x, self.pixmap_width - 1))
-        pixmap_y = max(0, min(pixmap_y, self.pixmap_height - 1))
+        # Check if click is within the displayed image area
+        image_left = self.display_offset_x
+        image_right = self.display_offset_x + self.display_width
+        image_top = self.display_offset_y
+        image_bottom = self.display_offset_y + self.display_height
         
-        # Convert pixmap coordinates to original frame coordinates
-        frame_x = int(pixmap_x * self.scale_x)
-        frame_y = int(pixmap_y * self.scale_y)
+        if click_x < image_left or click_x >= image_right or click_y < image_top or click_y >= image_bottom:
+            # Click is outside the image area, clamp to nearest edge
+            click_x = max(image_left, min(click_x, image_right - 1))
+            click_y = max(image_top, min(click_y, image_bottom - 1))
+        
+        # Convert to coordinates within the displayed image (0 to display_width/height)
+        image_x = click_x - self.display_offset_x
+        image_y = click_y - self.display_offset_y
+        
+        # Scale to original frame coordinates
+        frame_x = int(image_x * self.scale_x)
+        frame_y = int(image_y * self.scale_y)
         
         # Ensure frame coordinates are within bounds
         frame_x = max(0, min(frame_x, self.frame_width - 1))
@@ -183,7 +202,7 @@ class InteractiveVideoWidget(QLabel):
         debug_info = f"Drawing mode active. "
         if hasattr(self, 'frame_width') and self.frame_width > 0:
             debug_info += f"Frame: {self.frame_width}x{self.frame_height}, "
-            debug_info += f"Display: {self.pixmap_width}x{self.pixmap_height}, "
+            debug_info += f"Display: {self.display_width}x{self.display_height}, "
             debug_info += f"Scale: {self.scale_x:.2f}x{self.scale_y:.2f}, "
             debug_info += f"Offset: ({self.display_offset_x}, {self.display_offset_y})"
         
@@ -205,7 +224,13 @@ class InteractiveVideoWidget(QLabel):
             frame_x, frame_y = self.widget_to_frame_coords(click_point)
             
             # Debug: Update tooltip with coordinate information
-            self.setToolTip(f"Widget: ({click_point.x()}, {click_point.y()}) -> Frame: ({frame_x}, {frame_y})")
+            if hasattr(self, 'display_width'):
+                image_x = click_point.x() - self.display_offset_x
+                image_y = click_point.y() - self.display_offset_y
+                self.setToolTip(f"Widget: ({click_point.x()}, {click_point.y()}) -> Image: ({image_x}, {image_y}) -> Frame: ({frame_x}, {frame_y})\n"
+                               f"Display area: {self.display_width}x{self.display_height} at offset ({self.display_offset_x}, {self.display_offset_y})")
+            else:
+                self.setToolTip(f"Widget: ({click_point.x()}, {click_point.y()}) -> Frame: ({frame_x}, {frame_y})")
             
             if self.drawing_mode == self.MODE_DRAW:
                 if event.button() == Qt.LeftButton:
@@ -271,8 +296,8 @@ class InteractiveVideoWidget(QLabel):
         # Reset display parameters
         self.frame_width = 0
         self.frame_height = 0
-        self.pixmap_width = 0
-        self.pixmap_height = 0
+        self.display_width = 0
+        self.display_height = 0
         self.display_offset_x = 0
         self.display_offset_y = 0
         self.scale_x = 1.0
