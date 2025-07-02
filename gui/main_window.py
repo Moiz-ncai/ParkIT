@@ -672,44 +672,60 @@ Total Cameras: {total_cameras} cameras configured
     
     def update_spots_table(self):
         """Update the parking spots table"""
-        spots = self.spot_manager.get_all_spots()
-        self.spots_table.setRowCount(len(spots))
-        
-        for row, (spot_id, spot) in enumerate(spots.items()):
-            # ID
-            self.spots_table.setItem(row, 0, QTableWidgetItem(str(spot_id)))
+        try:
+            spots = self.spot_manager.get_all_spots()
+            self.spots_table.setRowCount(len(spots))
             
-            # Name
-            self.spots_table.setItem(row, 1, QTableWidgetItem(spot.name))
+            for row, (spot_id, spot) in enumerate(spots.items()):
+                try:
+                    # ID
+                    self.spots_table.setItem(row, 0, QTableWidgetItem(str(spot_id)))
+                    
+                    # Name
+                    self.spots_table.setItem(row, 1, QTableWidgetItem(spot.name))
+                    
+                    # Status
+                    status = "Occupied" if hasattr(spot, 'is_occupied') and spot.is_occupied else "Vacant"
+                    status_item = QTableWidgetItem(status)
+                    if hasattr(spot, 'is_occupied') and spot.is_occupied:
+                        status_item.setBackground(QColor(255, 200, 200))  # Light red
+                    else:
+                        status_item.setBackground(QColor(200, 255, 200))  # Light green
+                    self.spots_table.setItem(row, 2, status_item)
+                    
+                    # Points count
+                    self.spots_table.setItem(row, 3, QTableWidgetItem(f"{len(spot.polygon_points)} points"))
+                    
+                except Exception as e:
+                    print(f"Error updating table row {row} for spot {spot_id}: {e}")
+                    continue
             
-            # Status
-            status = "Occupied" if spot.is_occupied else "Vacant"
-            status_item = QTableWidgetItem(status)
-            if spot.is_occupied:
-                status_item.setBackground(QColor(255, 200, 200))  # Light red
-            else:
-                status_item.setBackground(QColor(200, 255, 200))  # Light green
-            self.spots_table.setItem(row, 2, status_item)
-            
-            # Points count
-            self.spots_table.setItem(row, 3, QTableWidgetItem(f"{len(spot.polygon_points)} points"))
-        
-        # Update statistics
-        total_spots = len(spots)
-        occupied_spots = sum(1 for spot in spots.values() if spot.is_occupied)
-        vacant_spots = total_spots - occupied_spots
-        current_camera = self.spot_manager.get_current_camera_url()
-        total_cameras = len(self.spot_manager.get_all_cameras())
-        
-        if not current_camera:
-            self.stats_label.setText(f"No camera connected\nTotal cameras with spots: {total_cameras}")
-        elif total_spots == 0:
-            self.stats_label.setText(f"No parking spots defined for current camera\nCamera: {current_camera}\nTotal cameras: {total_cameras}")
-        else:
-            stats_text = f"Current Camera: {current_camera}\n"
-            stats_text += f"Spots: {total_spots} | Vacant: {vacant_spots} | Occupied: {occupied_spots}\n"
-            stats_text += f"Total cameras with spots: {total_cameras}"
-            self.stats_label.setText(stats_text)
+            # Update statistics
+            try:
+                total_spots = len(spots)
+                occupied_spots = sum(1 for spot in spots.values() if hasattr(spot, 'is_occupied') and spot.is_occupied)
+                vacant_spots = total_spots - occupied_spots
+                current_camera = self.spot_manager.get_current_camera_url()
+                total_cameras = len(self.spot_manager.get_all_cameras())
+                
+                if not current_camera:
+                    self.stats_label.setText(f"No camera connected\nTotal cameras with spots: {total_cameras}")
+                elif total_spots == 0:
+                    self.stats_label.setText(f"No parking spots defined for current camera\nCamera: {current_camera}\nTotal cameras: {total_cameras}")
+                else:
+                    stats_text = f"Current Camera: {current_camera}\n"
+                    stats_text += f"Spots: {total_spots} | Vacant: {vacant_spots} | Occupied: {occupied_spots}\n"
+                    stats_text += f"Total cameras with spots: {total_cameras}"
+                    self.stats_label.setText(stats_text)
+                    
+            except Exception as e:
+                print(f"Error updating statistics: {e}")
+                self.stats_label.setText("Error updating statistics")
+                
+        except Exception as e:
+            print(f"Error updating spots table: {e}")
+            self.spots_table.setRowCount(0)
+            self.stats_label.setText("Error loading parking spots")
     
     def on_spot_table_selection_changed(self):
         """Handle table selection change"""
@@ -751,43 +767,105 @@ Total Cameras: {total_cameras} cameras configured
     
     def delete_selected_spot(self):
         """Delete the selected parking spot"""
-        selected_rows = self.spots_table.selectionModel().selectedRows()
-        if not selected_rows:
-            return
-        
-        row = selected_rows[0].row()
-        spot_id_item = self.spots_table.item(row, 0)
-        spot_name_item = self.spots_table.item(row, 1)
-        if not spot_id_item or not spot_name_item:
-            return
-        
-        spot_id = int(spot_id_item.text())
-        spot_name = spot_name_item.text()
-        
-        reply = QMessageBox.question(self, "Delete Parking Spot",
-                                   f"Are you sure you want to delete '{spot_name}'?",
-                                   QMessageBox.Yes | QMessageBox.No,
-                                   QMessageBox.No)
-        
-        if reply == QMessageBox.Yes:
-            self.spot_manager.remove_spot(spot_id)
-            self.statusBar().showMessage(f"Parking spot '{spot_name}' deleted")
+        try:
+            selected_rows = self.spots_table.selectionModel().selectedRows()
+            if not selected_rows:
+                return
+            
+            row = selected_rows[0].row()
+            spot_id_item = self.spots_table.item(row, 0)
+            spot_name_item = self.spots_table.item(row, 1)
+            if not spot_id_item or not spot_name_item:
+                return
+            
+            spot_id = int(spot_id_item.text())
+            spot_name = spot_name_item.text()
+            
+            reply = QMessageBox.question(self, "Delete Parking Spot",
+                                       f"Are you sure you want to delete '{spot_name}'?",
+                                       QMessageBox.Yes | QMessageBox.No,
+                                       QMessageBox.No)
+            
+            if reply == QMessageBox.Yes:
+                # Temporarily disable detection during deletion to prevent conflicts
+                detection_was_enabled = False
+                if hasattr(self, 'car_detection_manager') and self.car_detection_manager.is_enabled:
+                    detection_was_enabled = True
+                    self.car_detection_manager.set_enabled(False)
+                
+                try:
+                    # Remove the spot
+                    self.spot_manager.remove_spot(spot_id)
+                    self.statusBar().showMessage(f"Parking spot '{spot_name}' deleted")
+                    
+                    # Clear table selection to prevent issues
+                    self.spots_table.clearSelection()
+                    self.edit_spot_btn.setEnabled(False)
+                    self.delete_spot_btn.setEnabled(False)
+                    
+                    # Force update the display
+                    if hasattr(self, 'video_widget'):
+                        self.video_widget.update_display()
+                        
+                finally:
+                    # Re-enable detection if it was enabled before
+                    if detection_was_enabled and hasattr(self, 'car_detection_manager'):
+                        self.car_detection_manager.set_enabled(True)
+                        
+        except Exception as e:
+            print(f"Error deleting parking spot: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to delete parking spot: {str(e)}")
+            # Make sure to re-enable detection even if there was an error
+            if hasattr(self, 'car_detection_manager'):
+                if hasattr(self, 'detection_enabled_checkbox') and self.detection_enabled_checkbox.isChecked():
+                    self.car_detection_manager.set_enabled(True)
     
     def clear_all_spots(self):
         """Clear all parking spots"""
-        spots = self.spot_manager.get_all_spots()
-        if not spots:
-            QMessageBox.information(self, "No Spots", "There are no parking spots to clear.")
-            return
-        
-        reply = QMessageBox.question(self, "Clear All Spots",
-                                   f"Are you sure you want to delete all {len(spots)} parking spots?",
-                                   QMessageBox.Yes | QMessageBox.No,
-                                   QMessageBox.No)
-        
-        if reply == QMessageBox.Yes:
-            self.spot_manager.clear_all_spots()
-            self.statusBar().showMessage("All parking spots cleared")
+        try:
+            spots = self.spot_manager.get_all_spots()
+            if not spots:
+                QMessageBox.information(self, "No Spots", "There are no parking spots to clear.")
+                return
+            
+            reply = QMessageBox.question(self, "Clear All Spots",
+                                       f"Are you sure you want to delete all {len(spots)} parking spots?",
+                                       QMessageBox.Yes | QMessageBox.No,
+                                       QMessageBox.No)
+            
+            if reply == QMessageBox.Yes:
+                # Temporarily disable detection during clearing to prevent conflicts
+                detection_was_enabled = False
+                if hasattr(self, 'car_detection_manager') and self.car_detection_manager.is_enabled:
+                    detection_was_enabled = True
+                    self.car_detection_manager.set_enabled(False)
+                
+                try:
+                    # Clear all spots
+                    self.spot_manager.clear_all_spots()
+                    self.statusBar().showMessage("All parking spots cleared")
+                    
+                    # Clear table selection
+                    self.spots_table.clearSelection()
+                    self.edit_spot_btn.setEnabled(False)
+                    self.delete_spot_btn.setEnabled(False)
+                    
+                    # Force update the display
+                    if hasattr(self, 'video_widget'):
+                        self.video_widget.update_display()
+                        
+                finally:
+                    # Re-enable detection if it was enabled before
+                    if detection_was_enabled and hasattr(self, 'car_detection_manager'):
+                        self.car_detection_manager.set_enabled(True)
+                        
+        except Exception as e:
+            print(f"Error clearing parking spots: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to clear parking spots: {str(e)}")
+            # Make sure to re-enable detection even if there was an error
+            if hasattr(self, 'car_detection_manager'):
+                if hasattr(self, 'detection_enabled_checkbox') and self.detection_enabled_checkbox.isChecked():
+                    self.car_detection_manager.set_enabled(True)
     
     def initialize_detection_system(self):
         """Initialize the car detection system"""
@@ -837,16 +915,37 @@ Total Cameras: {total_cameras} cameras configured
     @pyqtSlot(dict)
     def on_occupancy_updated(self, occupancy_status):
         """Handle parking spot occupancy updates"""
-        # Update the spots table to reflect occupancy changes
-        self.update_spots_table()
-        
-        # Count occupied and vacant spots
-        occupied_count = sum(1 for occupied in occupancy_status.values() if occupied)
-        vacant_count = len(occupancy_status) - occupied_count
-        
-        self.statusBar().showMessage(f"Parking: {occupied_count} occupied, {vacant_count} vacant")
+        try:
+            # Update the spots table to reflect occupancy changes
+            self.update_spots_table()
+            
+            # Count occupied and vacant spots
+            if occupancy_status:
+                occupied_count = sum(1 for occupied in occupancy_status.values() if occupied)
+                vacant_count = len(occupancy_status) - occupied_count
+                
+                self.statusBar().showMessage(f"Parking: {occupied_count} occupied, {vacant_count} vacant")
+            else:
+                self.statusBar().showMessage("No parking spots defined")
+                
+        except Exception as e:
+            print(f"Error handling occupancy update: {e}")
+            self.statusBar().showMessage("Error updating occupancy status")
     
     def closeEvent(self, event):
         """Handle application close event"""
-        self.camera_manager.disconnect_camera()
-        event.accept() 
+        try:
+            # Disable car detection first
+            if hasattr(self, 'car_detection_manager'):
+                self.car_detection_manager.set_enabled(False)
+                # Wait for detection worker to finish
+                if hasattr(self.car_detection_manager, 'detection_worker'):
+                    self.car_detection_manager.detection_worker.wait(2000)  # Wait up to 2 seconds
+            
+            # Disconnect camera
+            self.camera_manager.disconnect_camera()
+            
+        except Exception as e:
+            print(f"Error during application shutdown: {e}")
+        finally:
+            event.accept() 

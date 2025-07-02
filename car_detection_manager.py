@@ -59,9 +59,15 @@ class CarDetectionWorker(QThread):
     def run(self):
         """Run detection on the current frame"""
         if self.model is None or self.frame is None:
+            self.detection_complete.emit([], self.frame if self.frame is not None else np.array([]))
             return
         
         try:
+            # Check if frame is valid
+            if self.frame.size == 0:
+                self.detection_complete.emit([], self.frame)
+                return
+            
             # Run inference
             results = self.model(self.frame, conf=self.confidence_threshold, verbose=False)
             
@@ -70,39 +76,55 @@ class CarDetectionWorker(QThread):
             annotated_frame = self.frame.copy()
             
             for result in results:
+                if result is None:
+                    continue
+                    
                 boxes = result.boxes
-                if boxes is not None:
+                if boxes is not None and len(boxes) > 0:
                     for box in boxes:
-                        # Check if detection is a car (class 2 in COCO)
-                        class_id = int(box.cls[0])
-                        if class_id == 2:  # Car class in COCO
-                            # Get bounding box coordinates
-                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
-                            confidence = float(box.conf[0])
-                            
-                            # Calculate center point (ensure integer values)
-                            center_x = int((x1 + x2) // 2)
-                            center_y = int((y1 + y2) // 2)
-                            
-                            # Create detection object
-                            detection = CarDetection(
-                                bbox=(x1, y1, x2, y2),
-                                confidence=confidence,
-                                center_point=(center_x, center_y)
-                            )
-                            car_detections.append(detection)
-                            
-                            # Draw detection on frame
-                            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                            cv2.putText(annotated_frame, f'Car: {confidence:.2f}', 
-                                      (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        try:
+                            # Check if detection is a car (class 2 in COCO)
+                            class_id = int(box.cls[0])
+                            if class_id == 2:  # Car class in COCO
+                                # Get bounding box coordinates
+                                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                                confidence = float(box.conf[0])
+                                
+                                # Validate bounding box
+                                if x2 <= x1 or y2 <= y1 or x1 < 0 or y1 < 0:
+                                    continue
+                                
+                                # Calculate center point (ensure integer values)
+                                center_x = int((x1 + x2) // 2)
+                                center_y = int((y1 + y2) // 2)
+                                
+                                # Create detection object
+                                detection = CarDetection(
+                                    bbox=(x1, y1, x2, y2),
+                                    confidence=confidence,
+                                    center_point=(center_x, center_y)
+                                )
+                                car_detections.append(detection)
+                                
+                                # Draw detection on frame
+                                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                                cv2.putText(annotated_frame, f'Car: {confidence:.2f}', 
+                                          (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                                          
+                        except Exception as e:
+                            print(f"Error processing detection box: {e}")
+                            continue
             
             # Emit results
             self.detection_complete.emit(car_detections, annotated_frame)
             
         except Exception as e:
             print(f"Error during car detection: {e}")
-            self.detection_complete.emit([], self.frame)
+            # Emit empty results on error
+            try:
+                self.detection_complete.emit([], self.frame)
+            except:
+                self.detection_complete.emit([], np.array([]))
 
 
 class CarDetectionManager(QObject):
@@ -145,10 +167,17 @@ class CarDetectionManager(QObject):
         """Enable or disable car detection"""
         self.is_enabled = enabled
         if not enabled:
+            # Wait for any running detection to complete
+            if self.detection_worker.isRunning():
+                self.detection_worker.wait(1000)  # Wait up to 1 second
+            
             # Clear all detections when disabled
             self.current_detections.clear()
             if self.parking_spot_manager:
-                self.update_spot_occupancy()
+                try:
+                    self.update_spot_occupancy()
+                except Exception as e:
+                    print(f"Error updating spot occupancy when disabling detection: {e}")
     
     def set_confidence_threshold(self, threshold: float):
         """Set the confidence threshold for detections"""
@@ -235,24 +264,40 @@ class CarDetectionManager(QObject):
         if not self.parking_spot_manager:
             return
         
-        spots = self.parking_spot_manager.get_all_spots()
-        occupancy_changes = {}
-        
-        for spot_id, spot in spots.items():
-            was_occupied = spot.is_occupied
-            is_occupied = self.is_spot_occupied(spot)
+        try:
+            spots = self.parking_spot_manager.get_all_spots()
+            if not spots:
+                return
+                
+            occupancy_changes = {}
             
-            # Update spot status
-            spot.is_occupied = is_occupied
+            for spot_id, spot in spots.items():
+                try:
+                    was_occupied = spot.is_occupied
+                    is_occupied = self.is_spot_occupied(spot)
+                    
+                    # Update spot status
+                    spot.is_occupied = is_occupied
+                    
+                    # Track changes
+                    if was_occupied != is_occupied:
+                        occupancy_changes[spot_id] = is_occupied
+                        
+                except Exception as e:
+                    print(f"Error updating occupancy for spot {spot_id}: {e}")
+                    continue
             
-            # Track changes
-            if was_occupied != is_occupied:
-                occupancy_changes[spot_id] = is_occupied
-        
-        # Emit occupancy update if there were changes
-        if occupancy_changes:
-            all_occupancy = {spot_id: spot.is_occupied for spot_id, spot in spots.items()}
-            self.occupancy_updated.emit(all_occupancy)
+            # Emit occupancy update if there were changes
+            if occupancy_changes:
+                try:
+                    all_occupancy = {spot_id: spot.is_occupied for spot_id, spot in spots.items() if hasattr(spot, 'is_occupied')}
+                    self.occupancy_updated.emit(all_occupancy)
+                except Exception as e:
+                    print(f"Error emitting occupancy update: {e}")
+                    
+        except Exception as e:
+            print(f"Error in update_spot_occupancy: {e}")
+            return
     
     def is_spot_occupied(self, spot) -> bool:
         """Check if a parking spot is occupied by a detected car"""
