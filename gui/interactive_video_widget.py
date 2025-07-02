@@ -44,6 +44,14 @@ class InteractiveVideoWidget(QLabel):
         self.scale_x = 1.0
         self.scale_y = 1.0
         
+        # Display parameters for coordinate conversion
+        self.frame_width = 0
+        self.frame_height = 0
+        self.pixmap_width = 0
+        self.pixmap_height = 0
+        self.display_offset_x = 0
+        self.display_offset_y = 0
+        
         # Parking spot manager reference (set from parent)
         self.spot_manager = None
         
@@ -90,17 +98,30 @@ class InteractiveVideoWidget(QLabel):
         bytes_per_line = ch * w
         qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         
+        # Store original frame dimensions
+        self.frame_width = w
+        self.frame_height = h
+        
         # Scale the image to fit the label while maintaining aspect ratio
         pixmap = QPixmap.fromImage(qt_image)
         scaled_pixmap = pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         
+        # Store the scaled pixmap dimensions and calculate display area
+        self.pixmap_width = scaled_pixmap.width()
+        self.pixmap_height = scaled_pixmap.height()
+        
+        # Calculate offset to center the pixmap within the widget
+        widget_size = self.size()
+        self.display_offset_x = (widget_size.width() - self.pixmap_width) // 2
+        self.display_offset_y = (widget_size.height() - self.pixmap_height) // 2
+        
         # Calculate scaling factors for coordinate conversion
-        if w > 0 and h > 0:
-            label_size = self.size()
-            pixmap_size = scaled_pixmap.size()
-            
-            self.scale_x = w / pixmap_size.width()
-            self.scale_y = h / pixmap_size.height()
+        if self.pixmap_width > 0 and self.pixmap_height > 0:
+            self.scale_x = self.frame_width / self.pixmap_width
+            self.scale_y = self.frame_height / self.pixmap_height
+        else:
+            self.scale_x = 1.0
+            self.scale_y = 1.0
         
         self.setPixmap(scaled_pixmap)
     
@@ -112,8 +133,7 @@ class InteractiveVideoWidget(QLabel):
         # Convert QPoints to frame coordinates
         frame_points = []
         for qpoint in self.current_polygon_points:
-            frame_x = int(qpoint.x() * self.scale_x)
-            frame_y = int(qpoint.y() * self.scale_y)
+            frame_x, frame_y = self.widget_to_frame_coords(qpoint)
             frame_points.append((frame_x, frame_y))
         
         # Draw lines between points
@@ -130,29 +150,25 @@ class InteractiveVideoWidget(QLabel):
     
     def widget_to_frame_coords(self, widget_point: QPoint) -> Tuple[int, int]:
         """Convert widget coordinates to frame coordinates"""
-        # Get the actual pixmap position within the widget
-        pixmap = self.pixmap()
-        if not pixmap:
+        # Check if we have valid display parameters
+        if not hasattr(self, 'pixmap_width') or not hasattr(self, 'frame_width'):
             return (0, 0)
         
-        widget_size = self.size()
-        pixmap_size = pixmap.size()
+        # Adjust click coordinates by removing the display offset
+        pixmap_x = widget_point.x() - self.display_offset_x
+        pixmap_y = widget_point.y() - self.display_offset_y
         
-        # Calculate offset to center the pixmap
-        offset_x = (widget_size.width() - pixmap_size.width()) // 2
-        offset_y = (widget_size.height() - pixmap_size.height()) // 2
+        # Clamp to pixmap bounds (ensure we're within the actual image area)
+        pixmap_x = max(0, min(pixmap_x, self.pixmap_width - 1))
+        pixmap_y = max(0, min(pixmap_y, self.pixmap_height - 1))
         
-        # Adjust click coordinates
-        adjusted_x = widget_point.x() - offset_x
-        adjusted_y = widget_point.y() - offset_y
+        # Convert pixmap coordinates to original frame coordinates
+        frame_x = int(pixmap_x * self.scale_x)
+        frame_y = int(pixmap_y * self.scale_y)
         
-        # Clamp to pixmap bounds
-        adjusted_x = max(0, min(adjusted_x, pixmap_size.width()))
-        adjusted_y = max(0, min(adjusted_y, pixmap_size.height()))
-        
-        # Convert to frame coordinates
-        frame_x = int(adjusted_x * self.scale_x)
-        frame_y = int(adjusted_y * self.scale_y)
+        # Ensure frame coordinates are within bounds
+        frame_x = max(0, min(frame_x, self.frame_width - 1))
+        frame_y = max(0, min(frame_y, self.frame_height - 1))
         
         return (frame_x, frame_y)
     
@@ -162,7 +178,16 @@ class InteractiveVideoWidget(QLabel):
         self.current_polygon_points.clear()
         self.is_drawing = True
         self.setCursor(Qt.CrossCursor)
-        self.setToolTip("Click to add points to parking spot polygon. Right-click to finish.")
+        
+        # Debug info in tooltip
+        debug_info = f"Drawing mode active. "
+        if hasattr(self, 'frame_width') and self.frame_width > 0:
+            debug_info += f"Frame: {self.frame_width}x{self.frame_height}, "
+            debug_info += f"Display: {self.pixmap_width}x{self.pixmap_height}, "
+            debug_info += f"Scale: {self.scale_x:.2f}x{self.scale_y:.2f}, "
+            debug_info += f"Offset: ({self.display_offset_x}, {self.display_offset_y})"
+        
+        self.setToolTip(debug_info + "\nLeft-click to add points, Right-click to finish.")
     
     def stop_drawing_mode(self):
         """Stop polygon drawing mode"""
@@ -178,6 +203,9 @@ class InteractiveVideoWidget(QLabel):
         if not self.current_frame is None:
             click_point = event.pos()
             frame_x, frame_y = self.widget_to_frame_coords(click_point)
+            
+            # Debug: Update tooltip with coordinate information
+            self.setToolTip(f"Widget: ({click_point.x()}, {click_point.y()}) -> Frame: ({frame_x}, {frame_y})")
             
             if self.drawing_mode == self.MODE_DRAW:
                 if event.button() == Qt.LeftButton:
@@ -239,5 +267,16 @@ class InteractiveVideoWidget(QLabel):
         """Clear the video display"""
         self.current_frame = None
         self.frame_with_spots = None
+        
+        # Reset display parameters
+        self.frame_width = 0
+        self.frame_height = 0
+        self.pixmap_width = 0
+        self.pixmap_height = 0
+        self.display_offset_x = 0
+        self.display_offset_y = 0
+        self.scale_x = 1.0
+        self.scale_y = 1.0
+        
         self.clear()
         self.setText("No Camera Connected\n\nConnect camera to start drawing parking spots") 
