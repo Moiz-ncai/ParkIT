@@ -57,20 +57,51 @@ class ParkingSpot:
 
 
 class ParkingSpotManager(QObject):
-    """Manages parking spots: creation, editing, deletion, and persistence"""
+    """Manages parking spots: creation, editing, deletion, and persistence per camera"""
     
     spots_updated = pyqtSignal()
     spot_selected = pyqtSignal(int)  # spot_id
+    camera_changed = pyqtSignal(str)  # camera_url
     
     def __init__(self, config_file: str = "parking_spots.json"):
         super().__init__()
         self.config_file = config_file
+        self.current_camera_url = ""
+        self.all_cameras_data: Dict[str, Dict] = {}  # camera_url -> camera_data
         self.parking_spots: Dict[int, ParkingSpot] = {}
         self.next_spot_id = 1
-        self.load_spots()
+        self.load_all_cameras()
+    
+    def set_camera(self, camera_url: str):
+        """Set the current camera and load its parking spots"""
+        if camera_url == self.current_camera_url:
+            return  # Same camera, no change needed
+        
+        # Save current camera data if we have one
+        if self.current_camera_url:
+            self.save_current_camera_data()
+        
+        # Switch to new camera
+        self.current_camera_url = camera_url
+        self.load_camera_data(camera_url)
+        self.camera_changed.emit(camera_url)
+        self.spots_updated.emit()
+    
+    def disconnect_camera(self):
+        """Disconnect current camera and clear spots"""
+        if self.current_camera_url:
+            self.save_current_camera_data()
+        
+        self.current_camera_url = ""
+        self.parking_spots.clear()
+        self.next_spot_id = 1
+        self.spots_updated.emit()
     
     def add_spot(self, name: str, polygon_points: List[Tuple[int, int]]) -> int:
-        """Add a new parking spot"""
+        """Add a new parking spot to current camera"""
+        if not self.current_camera_url:
+            raise ValueError("No camera connected")
+        
         if len(polygon_points) < 3:
             raise ValueError("Parking spot must have at least 3 points")
         
@@ -79,22 +110,25 @@ class ParkingSpotManager(QObject):
         current_id = self.next_spot_id
         self.next_spot_id += 1
         
-        self.save_spots()
+        self.save_current_camera_data()
         self.spots_updated.emit()
         return current_id
     
     def remove_spot(self, spot_id: int) -> bool:
-        """Remove a parking spot"""
+        """Remove a parking spot from current camera"""
+        if not self.current_camera_url:
+            return False
+        
         if spot_id in self.parking_spots:
             del self.parking_spots[spot_id]
-            self.save_spots()
+            self.save_current_camera_data()
             self.spots_updated.emit()
             return True
         return False
     
     def update_spot(self, spot_id: int, name: str = None, polygon_points: List[Tuple[int, int]] = None) -> bool:
-        """Update an existing parking spot"""
-        if spot_id not in self.parking_spots:
+        """Update an existing parking spot on current camera"""
+        if not self.current_camera_url or spot_id not in self.parking_spots:
             return False
         
         spot = self.parking_spots[spot_id]
@@ -105,7 +139,7 @@ class ParkingSpotManager(QObject):
                 raise ValueError("Parking spot must have at least 3 points")
             spot.polygon_points = polygon_points
         
-        self.save_spots()
+        self.save_current_camera_data()
         self.spots_updated.emit()
         return True
     
@@ -143,20 +177,48 @@ class ParkingSpotManager(QObject):
                 return spot_id
         return -1
     
-    def save_spots(self):
-        """Save parking spots to JSON file"""
+    def save_current_camera_data(self):
+        """Save current camera's parking spots data"""
+        if not self.current_camera_url:
+            return
+        
+        camera_data = {
+            'next_spot_id': self.next_spot_id,
+            'parking_spots': {str(k): v.to_dict() for k, v in self.parking_spots.items()}
+        }
+        self.all_cameras_data[self.current_camera_url] = camera_data
+        self.save_all_cameras()
+    
+    def load_camera_data(self, camera_url: str):
+        """Load parking spots data for specific camera"""
+        if camera_url in self.all_cameras_data:
+            camera_data = self.all_cameras_data[camera_url]
+            self.next_spot_id = camera_data.get('next_spot_id', 1)
+            spots_data = camera_data.get('parking_spots', {})
+            
+            self.parking_spots = {}
+            for spot_id_str, spot_data in spots_data.items():
+                spot_id = int(spot_id_str)
+                self.parking_spots[spot_id] = ParkingSpot.from_dict(spot_data)
+        else:
+            # New camera, start fresh
+            self.parking_spots = {}
+            self.next_spot_id = 1
+    
+    def save_all_cameras(self):
+        """Save all cameras data to JSON file"""
         try:
             data = {
-                'next_spot_id': self.next_spot_id,
-                'parking_spots': {str(k): v.to_dict() for k, v in self.parking_spots.items()}
+                'cameras': self.all_cameras_data,
+                'current_camera': self.current_camera_url
             }
             with open(self.config_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
-            print(f"Error saving parking spots: {e}")
+            print(f"Error saving cameras data: {e}")
     
-    def load_spots(self):
-        """Load parking spots from JSON file"""
+    def load_all_cameras(self):
+        """Load all cameras data from JSON file"""
         if not os.path.exists(self.config_file):
             return
         
@@ -164,25 +226,34 @@ class ParkingSpotManager(QObject):
             with open(self.config_file, 'r') as f:
                 data = json.load(f)
             
-            self.next_spot_id = data.get('next_spot_id', 1)
-            spots_data = data.get('parking_spots', {})
-            
-            self.parking_spots = {}
-            for spot_id_str, spot_data in spots_data.items():
-                spot_id = int(spot_id_str)
-                self.parking_spots[spot_id] = ParkingSpot.from_dict(spot_data)
+            self.all_cameras_data = data.get('cameras', {})
+            # Don't auto-load previous camera, wait for explicit set_camera call
             
         except Exception as e:
-            print(f"Error loading parking spots: {e}")
-            self.parking_spots = {}
-            self.next_spot_id = 1
+            print(f"Error loading cameras data: {e}")
+            self.all_cameras_data = {}
     
     def clear_all_spots(self):
-        """Clear all parking spots"""
+        """Clear all parking spots for current camera"""
+        if not self.current_camera_url:
+            return
+        
         self.parking_spots.clear()
         self.next_spot_id = 1
-        self.save_spots()
+        self.save_current_camera_data()
         self.spots_updated.emit()
+    
+    def get_current_camera_url(self) -> str:
+        """Get the current camera URL"""
+        return self.current_camera_url
+    
+    def get_all_cameras(self) -> List[str]:
+        """Get list of all cameras that have parking spot data"""
+        return list(self.all_cameras_data.keys())
+    
+    def has_camera_data(self, camera_url: str) -> bool:
+        """Check if camera has any parking spot data"""
+        return camera_url in self.all_cameras_data and len(self.all_cameras_data[camera_url].get('parking_spots', {})) > 0
     
     def draw_spots_on_frame(self, frame: np.ndarray) -> np.ndarray:
         """Draw all parking spots on a frame"""

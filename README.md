@@ -23,12 +23,14 @@ ParkIT is designed to help you monitor parking spaces through IP cameras, detect
 - Parking spot naming and labeling
 - Spot selection and highlighting
 
-✅ **Parking Spot Management**
+✅ **Camera-Specific Parking Spot Management**
+- Each camera maintains its own parking spot configuration
+- Automatic loading/saving of spots per camera IP/URL
 - Tabbed interface for organization
-- Comprehensive spot table with status
-- Edit, delete, and clear operations
-- Persistent storage (JSON format)
-- Visual spot overlay on video feed
+- Comprehensive spot table with camera status
+- Edit, delete, and clear operations per camera
+- Persistent storage with multi-camera support (JSON format)
+- Visual spot overlay on video feed with camera context
 
 ✅ **Modern GUI**
 - Clean, intuitive interface
@@ -107,18 +109,26 @@ python main.py
   - **Parking Spots Tab**: Spot management table and controls
   - **Instructions Tab**: Comprehensive usage guidelines
 
-### Parking Spot Setup
+### Camera-Specific Parking Spot Setup
 
 1. **Connect Camera**: Establish RTSP connection or use webcam (0)
+   - Each camera automatically loads its saved parking spots
+   - New cameras start with no spots defined
 2. **Draw Parking Spots**:
    - Click "Draw New Spot" button
    - Left-click on video to add polygon points
    - Right-click to finish and name the spot
-3. **Manage Spots**:
-   - View all spots in the Parking Spots tab
+   - Spots are automatically saved for this specific camera
+3. **Manage Camera-Specific Spots**:
+   - View spots for current camera in the Parking Spots tab
    - Click spots on video to select them
-   - Edit names, delete spots, or clear all
+   - Edit names, delete spots, or clear all (for current camera only)
    - Toggle visibility with checkbox
+4. **Switch Between Cameras**:
+   - Disconnect and connect to different cameras
+   - Each camera loads its own unique parking spot configuration
+   - Spots are stored persistently per camera IP/URL
+   - Statistics show current camera info and total cameras configured
 
 ### Keyboard Shortcuts
 

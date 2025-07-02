@@ -258,38 +258,49 @@ class MainWindow(QMainWindow):
         instructions_text = QTextEdit()
         instructions_text.setReadOnly(True)
         instructions_text.setText("""
-PHASE 2: Parking Spot Setup
+PHASE 2: Camera-Specific Parking Spot Setup
 
 1. CAMERA SETUP:
    - Enter RTSP URL: rtsp://user:pass@ip:port/stream
    - Or use '0' for webcam testing
    - Click 'Connect' to start video feed
+   - Each camera maintains its own set of parking spots
 
 2. DRAWING PARKING SPOTS:
    - Click 'Draw New Spot' button
    - Left-click on video to add polygon points
    - Right-click to finish the polygon
    - Enter a name for the parking spot
+   - Spots are automatically saved for this camera
 
 3. MANAGING SPOTS:
-   - View all spots in the 'Parking Spots' tab
+   - View spots for current camera in 'Parking Spots' tab
    - Click on spots in video to select them
    - Edit names or delete spots as needed
    - Toggle spot visibility with checkbox
+   - Switch cameras to see different spot configurations
 
-4. KEYBOARD SHORTCUTS:
+4. CAMERA SWITCHING:
+   - Disconnect and connect to different cameras
+   - Each camera loads its own parking spots
+   - Spots are persistently stored per camera IP/URL
+   - Statistics show current camera and total cameras
+
+5. KEYBOARD SHORTCUTS:
    - ESC: Cancel current drawing operation
 
 COMING IN PHASE 3:
-- YOLOv11 car detection
+- YOLOv11 car detection per camera
 - License plate recognition
 - OCR for license plate reading
-- Real-time occupancy monitoring
+- Real-time occupancy monitoring per camera
 
 TIPS:
-- Draw spots around actual parking areas
+- Each camera URL gets its own parking spot configuration
+- Draw spots specific to each camera's view
 - Use clear, descriptive names
 - Test with webcam before using IP cameras
+- Spots automatically save when you switch cameras
         """)
         instructions_layout.addWidget(instructions_text)
         
@@ -308,6 +319,7 @@ TIPS:
         # Spot manager signals
         self.spot_manager.spots_updated.connect(self.update_spots_table)
         self.spot_manager.spot_selected.connect(self.on_spot_selected)
+        self.spot_manager.camera_changed.connect(self.on_camera_changed)
         
         # Video widget signals
         self.video_widget.polygon_completed.connect(self.on_polygon_completed)
@@ -332,19 +344,30 @@ TIPS:
             self.rtsp_input.setEnabled(False)
             self.draw_spot_btn.setEnabled(True)
             
+            # Set camera in spot manager to load camera-specific spots
+            camera_url = self.camera_manager.current_url
+            self.spot_manager.set_camera(camera_url)
+            
             # Update camera info
             width, height = self.camera_manager.get_frame_size()
+            total_cameras = len(self.spot_manager.get_all_cameras())
+            has_spots = self.spot_manager.has_camera_data(camera_url)
+            
             if width and height:
                 info_text = f"""
-Camera URL: {self.camera_manager.current_url}
+Camera URL: {camera_url}
 Resolution: {width} x {height}
 Status: Connected and streaming
-Connection Time: Just connected
+Parking Spots: {len(self.spot_manager.get_all_spots())} spots defined
+Total Cameras: {total_cameras} cameras configured
+Camera History: {'Has previous spots' if has_spots else 'New camera'}
                 """
             else:
                 info_text = f"""
-Camera URL: {self.camera_manager.current_url}
+Camera URL: {camera_url}
 Status: Connected
+Parking Spots: {len(self.spot_manager.get_all_spots())} spots defined
+Total Cameras: {total_cameras} cameras configured
                 """
             self.camera_info.setText(info_text.strip())
         else:
@@ -355,7 +378,13 @@ Status: Connected
             self.rtsp_input.setEnabled(True)
             self.draw_spot_btn.setEnabled(False)
             self.cancel_draw_btn.setEnabled(False)
-            self.camera_info.setText("No camera connected")
+            
+            # Disconnect camera from spot manager
+            self.spot_manager.disconnect_camera()
+            
+            total_cameras = len(self.spot_manager.get_all_cameras())
+            camera_info = f"No camera connected\nTotal Cameras: {total_cameras} cameras configured"
+            self.camera_info.setText(camera_info)
             
             # Reset video display
             self.video_widget.clear_display()
@@ -500,6 +529,18 @@ Status: Connected
         if spot:
             self.statusBar().showMessage(f"Selected: {spot.name}")
     
+    @pyqtSlot(str)
+    def on_camera_changed(self, camera_url):
+        """Handle camera change in spot manager"""
+        if camera_url:
+            spot_count = len(self.spot_manager.get_all_spots())
+            if spot_count > 0:
+                self.statusBar().showMessage(f"Loaded {spot_count} parking spots for camera: {camera_url}")
+            else:
+                self.statusBar().showMessage(f"No existing parking spots for camera: {camera_url}")
+        else:
+            self.statusBar().showMessage("Camera disconnected")
+    
     def update_spots_table(self):
         """Update the parking spots table"""
         spots = self.spot_manager.get_all_spots()
@@ -528,11 +569,18 @@ Status: Connected
         total_spots = len(spots)
         occupied_spots = sum(1 for spot in spots.values() if spot.is_occupied)
         vacant_spots = total_spots - occupied_spots
+        current_camera = self.spot_manager.get_current_camera_url()
+        total_cameras = len(self.spot_manager.get_all_cameras())
         
-        if total_spots == 0:
-            self.stats_label.setText("No parking spots defined")
+        if not current_camera:
+            self.stats_label.setText(f"No camera connected\nTotal cameras with spots: {total_cameras}")
+        elif total_spots == 0:
+            self.stats_label.setText(f"No parking spots defined for current camera\nCamera: {current_camera}\nTotal cameras: {total_cameras}")
         else:
-            self.stats_label.setText(f"Total: {total_spots} | Vacant: {vacant_spots} | Occupied: {occupied_spots}")
+            stats_text = f"Current Camera: {current_camera}\n"
+            stats_text += f"Spots: {total_spots} | Vacant: {vacant_spots} | Occupied: {occupied_spots}\n"
+            stats_text += f"Total cameras with spots: {total_cameras}"
+            self.stats_label.setText(stats_text)
     
     def on_spot_table_selection_changed(self):
         """Handle table selection change"""
