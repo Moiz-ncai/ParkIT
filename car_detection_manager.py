@@ -80,9 +80,9 @@ class CarDetectionWorker(QThread):
                             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                             confidence = float(box.conf[0])
                             
-                            # Calculate center point
-                            center_x = (x1 + x2) // 2
-                            center_y = (y1 + y2) // 2
+                            # Calculate center point (ensure integer values)
+                            center_x = int((x1 + x2) // 2)
+                            center_y = int((y1 + y2) // 2)
                             
                             # Create detection object
                             detection = CarDetection(
@@ -263,7 +263,9 @@ class CarDetectionManager(QObject):
         
         for detection in self.current_detections:
             # Check if car center is inside the parking spot
-            center_inside = cv2.pointPolygonTest(spot_polygon, detection.center_point, False) >= 0
+            # Convert center_point to tuple of floats for OpenCV
+            center_point_float = (float(detection.center_point[0]), float(detection.center_point[1]))
+            center_inside = cv2.pointPolygonTest(spot_polygon, center_point_float, False) >= 0
             
             if center_inside:
                 return True
@@ -279,25 +281,57 @@ class CarDetectionManager(QObject):
         """Calculate overlap ratio between bounding box and polygon"""
         x1, y1, x2, y2 = bbox
         
-        # Create a mask for the polygon
-        mask_height = max(polygon[:, 1]) + 10
-        mask_width = max(polygon[:, 0]) + 10
-        polygon_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
-        cv2.fillPoly(polygon_mask, [polygon], 255)
-        
-        # Create a mask for the bounding box
-        bbox_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
-        cv2.rectangle(bbox_mask, (x1, y1), (x2, y2), 255, -1)
-        
-        # Calculate intersection and union
-        intersection = cv2.bitwise_and(polygon_mask, bbox_mask)
-        intersection_area = np.sum(intersection > 0)
-        bbox_area = (x2 - x1) * (y2 - y1)
-        
-        if bbox_area == 0:
+        # Ensure valid bounding box
+        if x2 <= x1 or y2 <= y1:
             return 0.0
         
-        return intersection_area / bbox_area
+        try:
+            # Create a mask for the polygon with proper dimensions
+            min_x = max(0, min(polygon[:, 0].min(), x1) - 10)
+            min_y = max(0, min(polygon[:, 1].min(), y1) - 10)
+            max_x = max(polygon[:, 0].max(), x2) + 10
+            max_y = max(polygon[:, 1].max(), y2) + 10
+            
+            mask_width = int(max_x - min_x)
+            mask_height = int(max_y - min_y)
+            
+            if mask_width <= 0 or mask_height <= 0:
+                return 0.0
+            
+            # Adjust polygon coordinates relative to mask origin
+            adjusted_polygon = polygon.copy().astype(np.int32)
+            adjusted_polygon[:, 0] -= int(min_x)
+            adjusted_polygon[:, 1] -= int(min_y)
+            
+            # Create masks
+            polygon_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
+            bbox_mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
+            
+            # Fill polygon mask
+            cv2.fillPoly(polygon_mask, [adjusted_polygon], 255)
+            
+            # Fill bbox mask (adjust coordinates)
+            bbox_x1 = max(0, int(x1 - min_x))
+            bbox_y1 = max(0, int(y1 - min_y))
+            bbox_x2 = min(mask_width, int(x2 - min_x))
+            bbox_y2 = min(mask_height, int(y2 - min_y))
+            
+            if bbox_x2 > bbox_x1 and bbox_y2 > bbox_y1:
+                cv2.rectangle(bbox_mask, (bbox_x1, bbox_y1), (bbox_x2, bbox_y2), 255, -1)
+            
+            # Calculate intersection
+            intersection = cv2.bitwise_and(polygon_mask, bbox_mask)
+            intersection_area = np.sum(intersection > 0)
+            bbox_area = (x2 - x1) * (y2 - y1)
+            
+            if bbox_area == 0:
+                return 0.0
+            
+            return intersection_area / bbox_area
+            
+        except Exception as e:
+            print(f"Error calculating overlap: {e}")
+            return 0.0
     
     def get_detection_stats(self) -> Dict:
         """Get detection statistics"""

@@ -31,6 +31,16 @@ def check_dependencies():
     except ImportError:
         missing_deps.append("PyQt5")
     
+    try:
+        from ultralytics import YOLO
+    except ImportError:
+        missing_deps.append("ultralytics (for car detection)")
+    
+    try:
+        import torch
+    except ImportError:
+        missing_deps.append("torch (for AI model)")
+    
     return missing_deps
 
 
@@ -47,20 +57,20 @@ def main():
         print("pip install -r requirements.txt")
         return 1
     
+    # Enable high DPI scaling BEFORE creating QApplication
+    if hasattr(Qt, 'AA_EnableHighDpiScaling'):
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    
     # Create QApplication
     app = QApplication(sys.argv)
     
     # Set application properties
     app.setApplicationName("ParkIT")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion("3.0.0")
     app.setOrganizationName("ParkIT Solutions")
     app.setOrganizationDomain("parkit.local")
-    
-    # Enable high DPI scaling
-    if hasattr(Qt, 'AA_EnableHighDpiScaling'):
-        app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
-        app.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     
     try:
         # Create and show main window
