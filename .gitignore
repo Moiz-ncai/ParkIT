@@ -81,6 +81,7 @@ Thumbs.db
 *.sqlite3
 config.ini
 settings.json
+parking_spots.json
 
 # Temporary files
 *.tmp

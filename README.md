@@ -9,7 +9,7 @@ ParkIT is designed to help you monitor parking spaces through IP cameras, detect
 1. **Setup Phase**: Configure cameras and define parking spot areas
 2. **Running Phase**: Real-time monitoring with AI-powered detection
 
-## Current Features (Phase 1)
+## Current Features (Phase 2)
 
 ✅ **Camera Management**
 - RTSP IP camera connection
@@ -17,11 +17,25 @@ ParkIT is designed to help you monitor parking spaces through IP cameras, detect
 - Connection status monitoring
 - Camera information display
 
+✅ **Interactive Parking Spot Setup**
+- Point-and-click polygon drawing
+- Real-time visual feedback
+- Parking spot naming and labeling
+- Spot selection and highlighting
+
+✅ **Parking Spot Management**
+- Tabbed interface for organization
+- Comprehensive spot table with status
+- Edit, delete, and clear operations
+- Persistent storage (JSON format)
+- Visual spot overlay on video feed
+
 ✅ **Modern GUI**
 - Clean, intuitive interface
 - Real-time video streaming
-- Responsive design
-- Status indicators
+- Interactive video controls
+- Responsive design with tabs
+- Status indicators and statistics
 
 ## Planned Features (Coming Soon)
 
@@ -86,22 +100,47 @@ python main.py
 ### Interface Overview
 
 - **Camera Setup**: Enter RTSP URL and connect/disconnect controls
-- **Video Display**: Live camera feed with proper scaling
-- **Connection Status**: Real-time connection status indicator
-- **Camera Information**: Shows camera details when connected
-- **Instructions Panel**: Usage guidelines and feature roadmap
+- **Interactive Video Display**: Live camera feed with polygon drawing capabilities
+- **Drawing Controls**: Start/cancel drawing, visibility toggle
+- **Tabbed Control Panel**:
+  - **Status Tab**: Connection status and camera information
+  - **Parking Spots Tab**: Spot management table and controls
+  - **Instructions Tab**: Comprehensive usage guidelines
+
+### Parking Spot Setup
+
+1. **Connect Camera**: Establish RTSP connection or use webcam (0)
+2. **Draw Parking Spots**:
+   - Click "Draw New Spot" button
+   - Left-click on video to add polygon points
+   - Right-click to finish and name the spot
+3. **Manage Spots**:
+   - View all spots in the Parking Spots tab
+   - Click spots on video to select them
+   - Edit names, delete spots, or clear all
+   - Toggle visibility with checkbox
+
+### Keyboard Shortcuts
+
+- **ESC**: Cancel current drawing operation
+- **Left-click**: Add polygon point (drawing mode) or select spot (view mode)
+- **Right-click**: Finish polygon drawing
 
 ## File Structure
 
 ```
 ParkIT/
-├── main.py                 # Application entry point
-├── camera_manager.py       # Camera connection and streaming
+├── main.py                          # Application entry point
+├── camera_manager.py                # Camera connection and streaming
+├── parking_spot_manager.py          # Parking spot management and persistence
 ├── gui/
 │   ├── __init__.py
-│   └── main_window.py      # Main GUI window
-├── requirements.txt        # Python dependencies
-└── README.md              # This file
+│   ├── main_window.py               # Main GUI window with tabbed interface
+│   └── interactive_video_widget.py  # Interactive video display with drawing
+├── requirements.txt                 # Python dependencies
+├── run_parkit.bat                  # Windows launcher script
+├── parking_spots.json              # Parking spot data (auto-generated)
+└── README.md                       # This file
 ```
 
 ## Troubleshooting
@@ -153,10 +192,11 @@ The application is designed with modularity in mind:
 
 ## Future Roadmap
 
-### Phase 2: Parking Spot Configuration
-- [ ] Interactive polygon drawing tool
-- [ ] Parking spot persistence
-- [ ] Multiple camera management
+### Phase 2: Parking Spot Configuration ✅ COMPLETED
+- [x] Interactive polygon drawing tool
+- [x] Parking spot persistence
+- [x] Multiple parking spot management
+- [x] Visual feedback and selection
 
 ### Phase 3: AI Detection
 - [ ] YOLOv11 integration
