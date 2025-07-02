@@ -27,12 +27,13 @@ class CarDetectionWorker(QThread):
     
     detection_complete = pyqtSignal(list, np.ndarray)  # detections, annotated_frame
     
-    def __init__(self):
+    def __init__(self, parent_manager=None):
         super().__init__()
         self.model = None
         self.frame = None
         self.running = False
         self.confidence_threshold = 0.5
+        self.parent_manager = parent_manager
         
     def initialize_model(self):
         """Initialize the YOLOv11 model"""
@@ -115,16 +116,18 @@ class CarDetectionWorker(QThread):
                             print(f"Error processing detection box: {e}")
                             continue
             
-            # Emit results
-            self.detection_complete.emit(car_detections, annotated_frame)
+            # Emit results only if parent manager is still enabled
+            if self.parent_manager is None or self.parent_manager.is_enabled:
+                self.detection_complete.emit(car_detections, annotated_frame)
             
         except Exception as e:
             print(f"Error during car detection: {e}")
-            # Emit empty results on error
-            try:
-                self.detection_complete.emit([], self.frame)
-            except:
-                self.detection_complete.emit([], np.array([]))
+            # Emit empty results on error only if still enabled
+            if self.parent_manager is None or self.parent_manager.is_enabled:
+                try:
+                    self.detection_complete.emit([], self.frame)
+                except:
+                    self.detection_complete.emit([], np.array([]))
 
 
 class CarDetectionManager(QObject):
@@ -135,7 +138,7 @@ class CarDetectionManager(QObject):
     
     def __init__(self):
         super().__init__()
-        self.detection_worker = CarDetectionWorker()
+        self.detection_worker = CarDetectionWorker(parent_manager=self)
         self.detection_worker.detection_complete.connect(self.on_detection_complete)
         
         self.is_enabled = False
@@ -199,20 +202,27 @@ class CarDetectionManager(QObject):
         
         current_time = time.time()
         
-        # Run detection at specified interval
-        if current_time - self.last_detection_time >= self.detection_interval:
+        # Run detection at specified interval (only if still enabled)
+        if self.is_enabled and current_time - self.last_detection_time >= self.detection_interval:
             if not self.detection_worker.isRunning():
                 self.detection_worker.set_frame(frame)
                 self.detection_worker.start()
                 self.last_detection_time = current_time
         
-        # Draw existing detections on frame
-        annotated_frame = self.draw_detections_on_frame(frame)
-        return annotated_frame
+        # Draw existing detections on frame (only if still enabled)
+        if self.is_enabled:
+            annotated_frame = self.draw_detections_on_frame(frame)
+            return annotated_frame
+        else:
+            return frame
     
     @pyqtSlot(list, np.ndarray)
     def on_detection_complete(self, detections: List[CarDetection], annotated_frame: np.ndarray):
         """Handle completed detection results"""
+        # Only process if detection is still enabled
+        if not self.is_enabled:
+            return
+            
         self.current_detections = detections
         self.total_detections += len(detections)
         
@@ -224,11 +234,16 @@ class CarDetectionManager(QObject):
             self.fps_counter = 0
             self.last_fps_time = current_time
         
-        # Update parking spot occupancy
-        self.update_spot_occupancy()
+        # Update parking spot occupancy (only if still enabled)
+        if self.is_enabled and self.parking_spot_manager:
+            try:
+                self.update_spot_occupancy()
+            except Exception as e:
+                print(f"Error updating spot occupancy in detection complete: {e}")
         
-        # Emit signals
-        self.detections_updated.emit(detections)
+        # Emit signals (only if still enabled)
+        if self.is_enabled:
+            self.detections_updated.emit(detections)
     
     def draw_detections_on_frame(self, frame: np.ndarray) -> np.ndarray:
         """Draw current car detections on frame"""

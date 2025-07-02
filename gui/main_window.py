@@ -792,25 +792,57 @@ Total Cameras: {total_cameras} cameras configured
                 if hasattr(self, 'car_detection_manager') and self.car_detection_manager.is_enabled:
                     detection_was_enabled = True
                     self.car_detection_manager.set_enabled(False)
+                    
+                    # Wait for any running detection to complete
+                    if self.car_detection_manager.detection_worker.isRunning():
+                        self.car_detection_manager.detection_worker.wait(2000)  # Wait up to 2 seconds
                 
                 try:
-                    # Remove the spot
-                    self.spot_manager.remove_spot(spot_id)
-                    self.statusBar().showMessage(f"Parking spot '{spot_name}' deleted")
-                    
-                    # Clear table selection to prevent issues
+                    # Clear table selection BEFORE deletion to prevent callbacks
                     self.spots_table.clearSelection()
                     self.edit_spot_btn.setEnabled(False)
                     self.delete_spot_btn.setEnabled(False)
                     
-                    # Force update the display
-                    if hasattr(self, 'video_widget'):
-                        self.video_widget.update_display()
+                    # Temporarily disconnect the spots_updated signal to prevent immediate callbacks
+                    try:
+                        self.spot_manager.spots_updated.disconnect(self.update_spots_table)
+                        signal_was_connected = True
+                    except:
+                        signal_was_connected = False
+                    
+                    # Remove the spot
+                    success = self.spot_manager.remove_spot(spot_id)
+                    
+                    # Reconnect the signal
+                    if signal_was_connected:
+                        self.spot_manager.spots_updated.connect(self.update_spots_table)
+                    
+                    if success:
+                        self.statusBar().showMessage(f"Parking spot '{spot_name}' deleted")
+                        
+                        # Clear current detections to force refresh
+                        if hasattr(self, 'car_detection_manager'):
+                            self.car_detection_manager.current_detections.clear()
+                        
+                        # Manually update the table and display after a short delay
+                        QTimer.singleShot(100, self.update_spots_table)
+                        QTimer.singleShot(100, lambda: self.video_widget.update_display() if hasattr(self, 'video_widget') else None)
+                    else:
+                        QMessageBox.warning(self, "Delete Failed", f"Failed to delete parking spot '{spot_name}'")
+                        
+                except Exception as delete_error:
+                    print(f"Error during spot deletion: {delete_error}")
+                    # Reconnect signal if it was disconnected
+                    try:
+                        self.spot_manager.spots_updated.connect(self.update_spots_table)
+                    except:
+                        pass
+                    raise delete_error
                         
                 finally:
-                    # Re-enable detection if it was enabled before
+                    # Re-enable detection after a delay to ensure everything is settled
                     if detection_was_enabled and hasattr(self, 'car_detection_manager'):
-                        self.car_detection_manager.set_enabled(True)
+                        QTimer.singleShot(200, lambda: self.car_detection_manager.set_enabled(True))
                         
         except Exception as e:
             print(f"Error deleting parking spot: {e}")
@@ -818,7 +850,7 @@ Total Cameras: {total_cameras} cameras configured
             # Make sure to re-enable detection even if there was an error
             if hasattr(self, 'car_detection_manager'):
                 if hasattr(self, 'detection_enabled_checkbox') and self.detection_enabled_checkbox.isChecked():
-                    self.car_detection_manager.set_enabled(True)
+                    QTimer.singleShot(500, lambda: self.car_detection_manager.set_enabled(True))
     
     def clear_all_spots(self):
         """Clear all parking spots"""
