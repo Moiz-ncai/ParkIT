@@ -4,13 +4,14 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QGridLayout, QGroupBox, QSizePolicy, QSplitter,
                             QListWidget, QListWidgetItem, QMessageBox, QInputDialog,
                             QCheckBox, QTabWidget, QTableWidget, QTableWidgetItem,
-                            QHeaderView)
+                            QHeaderView, QSlider, QSpinBox, QDoubleSpinBox)
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer
 from PyQt5.QtGui import QPixmap, QImage, QFont, QPalette, QColor
 import cv2
 import numpy as np
 from camera_manager import CameraManager
 from parking_spot_manager import ParkingSpotManager
+from car_detection_manager import CarDetectionManager
 from gui.interactive_video_widget import InteractiveVideoWidget
 
 
@@ -24,9 +25,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.camera_manager = CameraManager()
         self.spot_manager = ParkingSpotManager()
+        self.car_detection_manager = CarDetectionManager()
         self.setup_ui()
         self.connect_signals()
         self.apply_styles()
+        self.initialize_detection_system()
     
     def setup_ui(self):
         """Initialize the user interface"""
@@ -150,6 +153,10 @@ class MainWindow(QMainWindow):
         spots_tab = self.create_spots_tab()
         tab_widget.addTab(spots_tab, "Parking Spots")
         
+        # Car detection tab
+        detection_tab = self.create_detection_tab()
+        tab_widget.addTab(detection_tab, "Car Detection")
+        
         # Instructions tab
         instructions_tab = self.create_instructions_tab()
         tab_widget.addTab(instructions_tab, "Instructions")
@@ -246,6 +253,104 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         return widget
     
+    def create_detection_tab(self):
+        """Create the car detection tab"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Detection control group
+        detection_group = QGroupBox("Detection Control")
+        detection_layout = QGridLayout()
+        
+        # Enable/Disable detection
+        self.detection_enabled_checkbox = QCheckBox("Enable Car Detection")
+        self.detection_enabled_checkbox.toggled.connect(self.on_detection_enabled_changed)
+        detection_layout.addWidget(self.detection_enabled_checkbox, 0, 0, 1, 2)
+        
+        # Confidence threshold
+        detection_layout.addWidget(QLabel("Confidence Threshold:"), 1, 0)
+        self.confidence_slider = QSlider(Qt.Horizontal)
+        self.confidence_slider.setRange(10, 95)
+        self.confidence_slider.setValue(50)
+        self.confidence_slider.valueChanged.connect(self.on_confidence_changed)
+        detection_layout.addWidget(self.confidence_slider, 1, 1)
+        
+        self.confidence_label = QLabel("0.50")
+        detection_layout.addWidget(self.confidence_label, 1, 2)
+        
+        # Detection interval
+        detection_layout.addWidget(QLabel("Detection Interval (s):"), 2, 0)
+        self.interval_spinbox = QDoubleSpinBox()
+        self.interval_spinbox.setRange(0.1, 10.0)
+        self.interval_spinbox.setValue(1.0)
+        self.interval_spinbox.setSingleStep(0.1)
+        self.interval_spinbox.valueChanged.connect(self.on_interval_changed)
+        detection_layout.addWidget(self.interval_spinbox, 2, 1)
+        
+        # Overlap threshold
+        detection_layout.addWidget(QLabel("Overlap Threshold:"), 3, 0)
+        self.overlap_slider = QSlider(Qt.Horizontal)
+        self.overlap_slider.setRange(10, 90)
+        self.overlap_slider.setValue(30)
+        self.overlap_slider.valueChanged.connect(self.on_overlap_changed)
+        detection_layout.addWidget(self.overlap_slider, 3, 1)
+        
+        self.overlap_label = QLabel("0.30")
+        detection_layout.addWidget(self.overlap_label, 3, 2)
+        
+        detection_group.setLayout(detection_layout)
+        layout.addWidget(detection_group)
+        
+        # Detection statistics group
+        stats_group = QGroupBox("Detection Statistics")
+        stats_layout = QGridLayout()
+        
+        # Statistics labels
+        self.current_cars_label = QLabel("Current Cars: 0")
+        self.total_detections_label = QLabel("Total Detections: 0")
+        self.detection_fps_label = QLabel("Detection FPS: 0")
+        self.model_status_label = QLabel("Model Status: Not Loaded")
+        
+        stats_layout.addWidget(self.current_cars_label, 0, 0)
+        stats_layout.addWidget(self.total_detections_label, 0, 1)
+        stats_layout.addWidget(self.detection_fps_label, 1, 0)
+        stats_layout.addWidget(self.model_status_label, 1, 1)
+        
+        stats_group.setLayout(stats_layout)
+        layout.addWidget(stats_group)
+        
+        # Detection info
+        info_group = QGroupBox("Information")
+        info_layout = QVBoxLayout()
+        
+        info_text = QTextEdit()
+        info_text.setReadOnly(True)
+        info_text.setMaximumHeight(200)
+        info_text.setHtml("""
+        <h4>Car Detection Features:</h4>
+        <ul>
+            <li><strong>YOLOv11 Model:</strong> Uses COCO-trained model for car detection</li>
+            <li><strong>Real-time Processing:</strong> Detects cars in live video feed</li>
+            <li><strong>Automatic Occupancy:</strong> Updates parking spot status based on detections</li>
+            <li><strong>Configurable Settings:</strong> Adjust confidence and overlap thresholds</li>
+        </ul>
+        
+        <h4>Settings Guide:</h4>
+        <ul>
+            <li><strong>Confidence:</strong> Lower = more detections, higher = fewer false positives</li>
+            <li><strong>Interval:</strong> How often to run detection (lower = more frequent)</li>
+            <li><strong>Overlap:</strong> How much car must overlap spot to be considered occupied</li>
+        </ul>
+        """)
+        info_layout.addWidget(info_text)
+        
+        info_group.setLayout(info_layout)
+        layout.addWidget(info_group)
+        
+        layout.addStretch()
+        widget.setLayout(layout)
+        return widget
+    
     def create_instructions_tab(self):
         """Create the instructions tab"""
         widget = QWidget()
@@ -258,7 +363,7 @@ class MainWindow(QMainWindow):
         instructions_text = QTextEdit()
         instructions_text.setReadOnly(True)
         instructions_text.setText("""
-PHASE 2: Camera-Specific Parking Spot Setup
+PHASE 3: Car Detection & Real-time Parking Management
 
 1. CAMERA SETUP:
    - Enter RTSP URL: rtsp://user:pass@ip:port/stream
@@ -273,34 +378,49 @@ PHASE 2: Camera-Specific Parking Spot Setup
    - Enter a name for the parking spot
    - Spots are automatically saved for this camera
 
-3. MANAGING SPOTS:
+3. CAR DETECTION:
+   - Go to 'Car Detection' tab
+   - Enable car detection with checkbox
+   - Adjust confidence threshold (lower = more detections)
+   - Set detection interval (how often to detect)
+   - Configure overlap threshold (for spot occupancy)
+   - View detection statistics and model status
+
+4. REAL-TIME MONITORING:
+   - Green boxes show detected cars with confidence scores
+   - Parking spots automatically update:
+     * Green spots = Vacant
+     * Red spots = Occupied (car detected)
+   - View occupancy stats in Parking Spots tab
+   - Status bar shows real-time occupancy counts
+
+5. MANAGING SPOTS:
    - View spots for current camera in 'Parking Spots' tab
+   - Status column shows Occupied/Vacant with color coding
    - Click on spots in video to select them
    - Edit names or delete spots as needed
    - Toggle spot visibility with checkbox
-   - Switch cameras to see different spot configurations
 
-4. CAMERA SWITCHING:
+6. CAMERA SWITCHING:
    - Disconnect and connect to different cameras
    - Each camera loads its own parking spots
+   - Detection settings persist across cameras
    - Spots are persistently stored per camera IP/URL
-   - Statistics show current camera and total cameras
 
-5. KEYBOARD SHORTCUTS:
+7. KEYBOARD SHORTCUTS:
    - ESC: Cancel current drawing operation
 
-COMING IN PHASE 3:
-- YOLOv11 car detection per camera
+COMING SOON:
 - License plate recognition
 - OCR for license plate reading
-- Real-time occupancy monitoring per camera
+- Parking history and analytics
 
 TIPS:
-- Each camera URL gets its own parking spot configuration
-- Draw spots specific to each camera's view
-- Use clear, descriptive names
-- Test with webcam before using IP cameras
-- Spots automatically save when you switch cameras
+- Draw parking spots to match actual parking space boundaries
+- Use appropriate confidence threshold for your camera quality
+- Higher overlap threshold = stricter occupancy detection
+- Test detection settings with different lighting conditions
+- Each camera maintains separate spot configurations
         """)
         instructions_layout.addWidget(instructions_text)
         
@@ -321,6 +441,10 @@ TIPS:
         self.spot_manager.spot_selected.connect(self.on_spot_selected)
         self.spot_manager.camera_changed.connect(self.on_camera_changed)
         
+        # Car detection manager signals
+        self.car_detection_manager.detections_updated.connect(self.on_detections_updated)
+        self.car_detection_manager.occupancy_updated.connect(self.on_occupancy_updated)
+        
         # Video widget signals
         self.video_widget.polygon_completed.connect(self.on_polygon_completed)
         self.video_widget.spot_clicked.connect(self.on_spot_clicked)
@@ -331,7 +455,12 @@ TIPS:
     @pyqtSlot(np.ndarray)
     def update_frame(self, frame):
         """Update the video display with new frame"""
-        self.video_widget.set_frame(frame)
+        # Process frame through car detection if enabled
+        if hasattr(self, 'car_detection_manager'):
+            processed_frame = self.car_detection_manager.process_frame(frame)
+            self.video_widget.set_frame(processed_frame)
+        else:
+            self.video_widget.set_frame(frame)
     
     @pyqtSlot(bool, str)
     def update_connection_status(self, connected, message):
@@ -659,6 +788,63 @@ Total Cameras: {total_cameras} cameras configured
         if reply == QMessageBox.Yes:
             self.spot_manager.clear_all_spots()
             self.statusBar().showMessage("All parking spots cleared")
+    
+    def initialize_detection_system(self):
+        """Initialize the car detection system"""
+        if self.car_detection_manager.initialize():
+            self.model_status_label.setText("Model Status: Loaded Successfully")
+            self.model_status_label.setStyleSheet("color: #27ae60; font-weight: bold;")
+            # Set reference to spot manager
+            self.car_detection_manager.set_parking_spot_manager(self.spot_manager)
+        else:
+            self.model_status_label.setText("Model Status: Failed to Load")
+            self.model_status_label.setStyleSheet("color: #e74c3c; font-weight: bold;")
+            # Disable detection controls if model failed to load
+            if hasattr(self, 'detection_enabled_checkbox'):
+                self.detection_enabled_checkbox.setEnabled(False)
+    
+    # Car detection signal handlers
+    def on_detection_enabled_changed(self, enabled):
+        """Handle detection enabled/disabled"""
+        self.car_detection_manager.set_enabled(enabled)
+        status = "Enabled" if enabled else "Disabled"
+        self.statusBar().showMessage(f"Car detection {status.lower()}")
+    
+    def on_confidence_changed(self, value):
+        """Handle confidence threshold change"""
+        confidence = value / 100.0
+        self.confidence_label.setText(f"{confidence:.2f}")
+        self.car_detection_manager.set_confidence_threshold(confidence)
+    
+    def on_interval_changed(self, value):
+        """Handle detection interval change"""
+        self.car_detection_manager.set_detection_interval(value)
+    
+    def on_overlap_changed(self, value):
+        """Handle overlap threshold change"""
+        overlap = value / 100.0
+        self.overlap_label.setText(f"{overlap:.2f}")
+        self.car_detection_manager.set_overlap_threshold(overlap)
+    
+    @pyqtSlot(list)
+    def on_detections_updated(self, detections):
+        """Handle updated car detections"""
+        stats = self.car_detection_manager.get_detection_stats()
+        self.current_cars_label.setText(f"Current Cars: {stats['current_cars']}")
+        self.total_detections_label.setText(f"Total Detections: {stats['total_detections']}")
+        self.detection_fps_label.setText(f"Detection FPS: {stats['detection_fps']}")
+    
+    @pyqtSlot(dict)
+    def on_occupancy_updated(self, occupancy_status):
+        """Handle parking spot occupancy updates"""
+        # Update the spots table to reflect occupancy changes
+        self.update_spots_table()
+        
+        # Count occupied and vacant spots
+        occupied_count = sum(1 for occupied in occupancy_status.values() if occupied)
+        vacant_count = len(occupancy_status) - occupied_count
+        
+        self.statusBar().showMessage(f"Parking: {occupied_count} occupied, {vacant_count} vacant")
     
     def closeEvent(self, event):
         """Handle application close event"""

@@ -9,7 +9,7 @@ ParkIT is designed to help you monitor parking spaces through IP cameras, detect
 1. **Setup Phase**: Configure cameras and define parking spot areas
 2. **Running Phase**: Real-time monitoring with AI-powered detection
 
-## Current Features (Phase 2)
+## Current Features (Phase 3)
 
 ✅ **Camera Management**
 - RTSP IP camera connection
@@ -32,30 +32,46 @@ ParkIT is designed to help you monitor parking spaces through IP cameras, detect
 - Persistent storage with multi-camera support (JSON format)
 - Visual spot overlay on video feed with camera context
 
+✅ **YOLOv11 Car Detection**
+- Real-time car detection using COCO-trained YOLOv11 model
+- Configurable confidence threshold and detection interval
+- Multi-threaded processing for smooth GUI performance
+- Visual bounding boxes with confidence scores
+- Detection statistics and FPS monitoring
+
+✅ **Real-time Parking Occupancy**
+- Automatic parking spot status updates (Occupied/Vacant)
+- Intelligent overlap detection for spot occupancy
+- Color-coded parking spots (Green=Vacant, Red=Occupied)
+- Real-time occupancy statistics and counts
+- Camera-specific occupancy monitoring
+
 ✅ **Modern GUI**
-- Clean, intuitive interface
-- Real-time video streaming
+- Clean, intuitive interface with tabbed design
+- Real-time video streaming with detection overlay
+- Car Detection tab with configurable settings
 - Interactive video controls
-- Responsive design with tabs
-- Status indicators and statistics
+- Responsive design with status indicators
+- Comprehensive statistics display
 
 ## Planned Features (Coming Soon)
 
-🚧 **Parking Spot Configuration**
-- Interactive polygon drawing for parking spots
-- Multiple parking area definition
-- Spot numbering and labeling
+🚧 **License Plate Recognition**
+- License plate detection and localization
+- OCR for license plate text extraction
+- Vehicle identification and tracking
 
-🚧 **AI-Powered Detection**
-- YOLOv11 car detection
-- License plate recognition
-- OCR for license plate text
-- Real-time occupancy status
+🚧 **Advanced Analytics**
+- Parking duration tracking
+- Historical occupancy data
+- Usage patterns and statistics
+- Export capabilities and reporting
 
-🚧 **Management Dashboard**
-- Parking spot availability overview
-- Historical data and analytics
-- Export capabilities
+🚧 **Enhanced Features**
+- Multiple detection models support
+- Email/SMS notifications
+- Database integration
+- REST API for external integration
 
 ## Installation
 
@@ -72,10 +88,13 @@ pip install -r requirements.txt
 
 ### Dependencies
 
-- `PyQt5==5.15.10` - GUI framework
-- `opencv-python==4.8.1.78` - Computer vision and camera handling
-- `numpy==1.24.3` - Numerical computing
-- `Pillow==10.0.1` - Image processing
+- `PyQt5>=5.15.7` - GUI framework
+- `opencv-python>=4.8.0` - Computer vision and camera handling
+- `numpy>=1.21.0` - Numerical computing
+- `Pillow>=10.0.0` - Image processing
+- `ultralytics>=8.0.0` - YOLOv11 model and inference engine
+- `torch>=2.0.0` - PyTorch deep learning framework
+- `torchvision>=0.15.0` - Computer vision utilities for PyTorch
 
 ## Usage
 
@@ -102,11 +121,12 @@ python main.py
 ### Interface Overview
 
 - **Camera Setup**: Enter RTSP URL and connect/disconnect controls
-- **Interactive Video Display**: Live camera feed with polygon drawing capabilities
+- **Interactive Video Display**: Live camera feed with polygon drawing and car detection overlay
 - **Drawing Controls**: Start/cancel drawing, visibility toggle
 - **Tabbed Control Panel**:
   - **Status Tab**: Connection status and camera information
-  - **Parking Spots Tab**: Spot management table and controls
+  - **Parking Spots Tab**: Spot management table with occupancy status
+  - **Car Detection Tab**: Detection controls, statistics, and settings
   - **Instructions Tab**: Comprehensive usage guidelines
 
 ### Camera-Specific Parking Spot Setup
@@ -130,6 +150,34 @@ python main.py
    - Spots are stored persistently per camera IP/URL
    - Statistics show current camera info and total cameras configured
 
+### Car Detection and Real-time Monitoring
+
+1. **Enable Car Detection**:
+   - Go to the "Car Detection" tab
+   - Check "Enable Car Detection" to start detection
+   - The YOLOv11 model will automatically download on first run
+
+2. **Configure Detection Settings**:
+   - **Confidence Threshold**: Adjust sensitivity (0.10-0.95)
+     - Lower values = more detections, potential false positives
+     - Higher values = fewer detections, more accuracy
+   - **Detection Interval**: How often to run detection (0.1-10.0 seconds)
+     - Lower intervals = more frequent updates, higher CPU usage
+   - **Overlap Threshold**: Minimum overlap for spot occupancy (0.10-0.90)
+     - Higher values = stricter occupancy detection
+
+3. **Monitor Real-time Status**:
+   - **Video Feed**: Green bounding boxes show detected cars with confidence scores
+   - **Parking Spots**: Automatically update colors (Green=Vacant, Red=Occupied)
+   - **Statistics**: View current cars, total detections, and detection FPS
+   - **Status Bar**: Shows real-time occupancy counts
+
+4. **Occupancy Management**:
+   - View occupancy status in the Parking Spots tab
+   - Status column shows Occupied/Vacant with color coding
+   - Statistics display current camera occupancy summary
+   - Each camera maintains independent detection state
+
 ### Keyboard Shortcuts
 
 - **ESC**: Cancel current drawing operation
@@ -143,6 +191,7 @@ ParkIT/
 ├── main.py                          # Application entry point
 ├── camera_manager.py                # Camera connection and streaming
 ├── parking_spot_manager.py          # Parking spot management and persistence
+├── car_detection_manager.py         # YOLOv11 car detection and occupancy analysis
 ├── gui/
 │   ├── __init__.py
 │   ├── main_window.py               # Main GUI window with tabbed interface
