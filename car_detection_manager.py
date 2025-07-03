@@ -9,21 +9,22 @@ try:
     YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
-    print("Warning: ultralytics not available. Car detection will be disabled.")
+    print("Warning: ultralytics not available. Vehicle detection will be disabled.")
 
 
 class CarDetection:
-    """Represents a detected car"""
+    """Represents a detected vehicle"""
     
-    def __init__(self, bbox: Tuple[int, int, int, int], confidence: float, center_point: Tuple[int, int]):
+    def __init__(self, bbox: Tuple[int, int, int, int], confidence: float, center_point: Tuple[int, int], vehicle_type: str = "Vehicle"):
         self.bbox = bbox  # (x1, y1, x2, y2)
         self.confidence = confidence
         self.center_point = center_point  # (x, y)
+        self.vehicle_type = vehicle_type  # Type of vehicle (Car, Truck, etc.)
         self.area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
 
 
 class CarDetectionWorker(QThread):
-    """Worker thread for running car detection to avoid blocking the GUI"""
+    """Worker thread for running vehicle detection to avoid blocking the GUI"""
     
     detection_complete = pyqtSignal(list, np.ndarray)  # detections, annotated_frame
     
@@ -42,7 +43,7 @@ class CarDetectionWorker(QThread):
         
         try:
             # Load YOLOv11 model with COCO weights
-            self.model = YOLO('yolo11n.pt')  # nano version for speed
+            self.model = YOLO('yolo11s_openvino_model/')  
             print("YOLOv11 model loaded successfully")
             return True
         except Exception as e:
@@ -72,7 +73,16 @@ class CarDetectionWorker(QThread):
             # Run inference
             results = self.model(self.frame, conf=self.confidence_threshold, verbose=False)
             
-            # Extract car detections (class 2 in COCO dataset)
+            # COCO vehicle class mapping
+            VEHICLE_CLASSES = {
+                2: 'Car',
+                3: 'Motorcycle', 
+                5: 'Bus',
+                6: 'Train',
+                7: 'Truck'
+            }
+            
+            # Extract vehicle detections (all vehicle classes in COCO dataset)
             car_detections = []
             annotated_frame = self.frame.copy()
             
@@ -84,9 +94,9 @@ class CarDetectionWorker(QThread):
                 if boxes is not None and len(boxes) > 0:
                     for box in boxes:
                         try:
-                            # Check if detection is a car (class 2 in COCO)
+                            # Check if detection is a vehicle
                             class_id = int(box.cls[0])
-                            if class_id == 2:  # Car class in COCO
+                            if class_id in VEHICLE_CLASSES:  # Any vehicle class
                                 # Get bounding box coordinates
                                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                                 confidence = float(box.conf[0])
@@ -100,16 +110,19 @@ class CarDetectionWorker(QThread):
                                 center_y = int((y1 + y2) // 2)
                                 
                                 # Create detection object
+                                vehicle_type = VEHICLE_CLASSES[class_id]
                                 detection = CarDetection(
                                     bbox=(x1, y1, x2, y2),
                                     confidence=confidence,
-                                    center_point=(center_x, center_y)
+                                    center_point=(center_x, center_y),
+                                    vehicle_type=vehicle_type
                                 )
                                 car_detections.append(detection)
                                 
                                 # Draw detection on frame
                                 cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                                cv2.putText(annotated_frame, f'Car: {confidence:.2f}', 
+                                vehicle_type = VEHICLE_CLASSES[class_id]
+                                cv2.putText(annotated_frame, f'{vehicle_type}: {confidence:.2f}', 
                                           (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                                           
                         except Exception as e:
@@ -121,7 +134,7 @@ class CarDetectionWorker(QThread):
                 self.detection_complete.emit(car_detections, annotated_frame)
             
         except Exception as e:
-            print(f"Error during car detection: {e}")
+            print(f"Error during vehicle detection: {e}")
             # Emit empty results on error only if still enabled
             if self.parent_manager is None or self.parent_manager.is_enabled:
                 try:
@@ -131,7 +144,7 @@ class CarDetectionWorker(QThread):
 
 
 class CarDetectionManager(QObject):
-    """Manages car detection and parking spot occupancy analysis"""
+    """Manages vehicle detection and parking spot occupancy analysis"""
     
     detections_updated = pyqtSignal(list)  # car_detections
     occupancy_updated = pyqtSignal(dict)  # spot_id -> is_occupied
@@ -156,7 +169,7 @@ class CarDetectionManager(QObject):
         self.fps_counter = 0
     
     def initialize(self) -> bool:
-        """Initialize the car detection system"""
+        """Initialize the vehicle detection system"""
         if not YOLO_AVAILABLE:
             return False
         
@@ -167,7 +180,7 @@ class CarDetectionManager(QObject):
         self.parking_spot_manager = spot_manager
     
     def set_enabled(self, enabled: bool):
-        """Enable or disable car detection"""
+        """Enable or disable vehicle detection"""
         self.is_enabled = enabled
         if not enabled:
             # Wait for any running detection to complete
@@ -196,7 +209,7 @@ class CarDetectionManager(QObject):
         self.overlap_threshold = threshold
     
     def process_frame(self, frame: np.ndarray) -> np.ndarray:
-        """Process frame for car detection"""
+        """Process frame for vehicle detection"""
         if not self.is_enabled or not YOLO_AVAILABLE:
             return frame
         
@@ -246,7 +259,7 @@ class CarDetectionManager(QObject):
             self.detections_updated.emit(detections)
     
     def draw_detections_on_frame(self, frame: np.ndarray) -> np.ndarray:
-        """Draw current car detections on frame"""
+        """Draw current vehicle detections on frame"""
         if not self.current_detections:
             return frame
         
@@ -255,12 +268,13 @@ class CarDetectionManager(QObject):
         for detection in self.current_detections:
             x1, y1, x2, y2 = detection.bbox
             confidence = detection.confidence
+            vehicle_type = detection.vehicle_type
             
             # Draw bounding box
             cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             
-            # Draw confidence label
-            label = f'Car: {confidence:.2f}'
+            # Draw confidence label with vehicle type
+            label = f'{vehicle_type}: {confidence:.2f}'
             cv2.putText(annotated_frame, label, (x1, y1 - 10), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
@@ -268,14 +282,14 @@ class CarDetectionManager(QObject):
             cv2.circle(annotated_frame, detection.center_point, 5, (0, 255, 0), -1)
         
         # Draw detection statistics
-        stats_text = f"Cars: {len(self.current_detections)} | FPS: {self.detection_fps}"
+        stats_text = f"Vehicles: {len(self.current_detections)} | FPS: {self.detection_fps}"
         cv2.putText(annotated_frame, stats_text, (10, 30), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         
         return annotated_frame
     
     def update_spot_occupancy(self):
-        """Update parking spot occupancy based on car detections"""
+        """Update parking spot occupancy based on vehicle detections"""
         if not self.parking_spot_manager:
             return
         
@@ -397,7 +411,7 @@ class CarDetectionManager(QObject):
         """Get detection statistics"""
         return {
             'total_detections': self.total_detections,
-            'current_cars': len(self.current_detections),
+            'current_vehicles': len(self.current_detections),
             'detection_fps': self.detection_fps,
             'confidence_threshold': self.confidence_threshold,
             'overlap_threshold': self.overlap_threshold,

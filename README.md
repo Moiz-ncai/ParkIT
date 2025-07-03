@@ -1,15 +1,14 @@
-# ParkIT - Parking Management System
+# ParkIT - Parking Management System v3.0
 
-A modern PyQt5-based application for intelligent parking management using IP cameras, computer vision, and machine learning.
+🚀 **Production Ready** - A modern PyQt5-based application for intelligent parking management using IP cameras, computer vision, and machine learning.
 
 ## Overview
 
-ParkIT is designed to help you monitor parking spaces through IP cameras, detect occupied/vacant spots, and identify vehicles through license plate recognition. The application is built in two phases:
+ParkIT is designed to help you monitor parking spaces through IP cameras, detect occupied/vacant spots, and provide real-time parking occupancy analysis. The application provides a complete solution for parking management with an intuitive interface and powerful AI-driven detection capabilities.
 
-1. **Setup Phase**: Configure cameras and define parking spot areas
-2. **Running Phase**: Real-time monitoring with AI-powered detection
+**Current Production Version: 3.0**
 
-## Current Features (Phase 3)
+## Features (Production Ready)
 
 ✅ **Camera Management**
 - RTSP IP camera connection
@@ -32,8 +31,8 @@ ParkIT is designed to help you monitor parking spaces through IP cameras, detect
 - Persistent storage with multi-camera support (JSON format)
 - Visual spot overlay on video feed with camera context
 
-✅ **YOLOv11 Car Detection**
-- Real-time car detection using COCO-trained YOLOv11 model
+✅ **YOLOv11 Vehicle Detection**
+- Real-time vehicle detection using COCO-trained YOLOv11 model (cars, trucks, buses, motorcycles, trains)
 - Configurable confidence threshold and detection interval
 - Multi-threaded processing for smooth GUI performance
 - Visual bounding boxes with confidence scores
@@ -121,12 +120,12 @@ python main.py
 ### Interface Overview
 
 - **Camera Setup**: Enter RTSP URL and connect/disconnect controls
-- **Interactive Video Display**: Live camera feed with polygon drawing and car detection overlay
+- **Interactive Video Display**: Live camera feed with polygon drawing and vehicle detection overlay
 - **Drawing Controls**: Start/cancel drawing, visibility toggle
 - **Tabbed Control Panel**:
   - **Status Tab**: Connection status and camera information
   - **Parking Spots Tab**: Spot management table with occupancy status
-  - **Car Detection Tab**: Detection controls, statistics, and settings
+  - **Vehicle Detection Tab**: Detection controls, statistics, and settings
   - **Instructions Tab**: Comprehensive usage guidelines
 
 ### Camera-Specific Parking Spot Setup
@@ -152,9 +151,9 @@ python main.py
 
 ### Car Detection and Real-time Monitoring
 
-1. **Enable Car Detection**:
-   - Go to the "Car Detection" tab
-   - Check "Enable Car Detection" to start detection
+1. **Enable Vehicle Detection**:
+   - Go to the "Vehicle Detection" tab
+   - Check "Enable Vehicle Detection" to start detection
    - The YOLOv11 model will automatically download on first run
 
 2. **Configure Detection Settings**:
@@ -167,9 +166,9 @@ python main.py
      - Higher values = stricter occupancy detection
 
 3. **Monitor Real-time Status**:
-   - **Video Feed**: Green bounding boxes show detected cars with confidence scores
+   - **Video Feed**: Green bounding boxes show detected vehicles with confidence scores and vehicle type
    - **Parking Spots**: Automatically update colors (Green=Vacant, Red=Occupied)
-   - **Statistics**: View current cars, total detections, and detection FPS
+   - **Statistics**: View current vehicles, total detections, and detection FPS
    - **Status Bar**: Shows real-time occupancy counts
 
 4. **Occupancy Management**:
@@ -192,12 +191,15 @@ ParkIT/
 ├── camera_manager.py                # Camera connection and streaming
 ├── parking_spot_manager.py          # Parking spot management and persistence
 ├── car_detection_manager.py         # YOLOv11 car detection and occupancy analysis
+├── assets/
+│   └── company_logo.png             # Company logo for branding
 ├── gui/
 │   ├── __init__.py
 │   ├── main_window.py               # Main GUI window with tabbed interface
 │   └── interactive_video_widget.py  # Interactive video display with drawing
 ├── requirements.txt                 # Python dependencies
 ├── run_parkit.bat                  # Windows launcher script
+├── yolo11n.pt                      # YOLOv11 model weights (auto-downloaded)
 ├── parking_spots.json              # Parking spot data (auto-generated)
 └── README.md                       # This file
 ```

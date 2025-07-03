@@ -33,8 +33,11 @@ class MainWindow(QMainWindow):
     
     def setup_ui(self):
         """Initialize the user interface"""
-        self.setWindowTitle("ParkIT - Parking Management System")
+        self.setWindowTitle("ParkIT")
         self.setGeometry(100, 100, 1200, 800)
+        
+        # Enable instant resizing behavior
+        self.setDockNestingEnabled(False)  # Disable dock nesting animations
         
         # Central widget
         central_widget = QWidget()
@@ -42,15 +45,71 @@ class MainWindow(QMainWindow):
         
         # Main layout
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(15)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(10)  # Reduced spacing from 15 to 10
+        main_layout.setContentsMargins(15, 15, 15, 15)  # Reduced margins from 20 to 15
         
-        # Title
-        title_label = QLabel("ParkIT - Parking Management System")
+        # Set layout to resize immediately
+        main_layout.setSizeConstraint(QVBoxLayout.SetDefaultConstraint)
+        
+        # Header with logo and title
+        header_layout = QHBoxLayout()
+        
+        # Left side with logo
+        left_container = QWidget()
+        left_container.setFixedWidth(120)  # Fixed width to balance the layout
+        left_container.setFixedHeight(80)  # Fixed height to prevent expansion
+        left_layout = QHBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Company logo
+        logo_label = QLabel()
+        try:
+            logo_pixmap = QPixmap("assets/company_logo.png")
+            # Scale logo to bigger size while maintaining aspect ratio
+            scaled_logo = logo_pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(scaled_logo)
+        except Exception as e:
+            # Fallback if logo can't be loaded
+            logo_label.setText("LOGO")
+            logo_label.setStyleSheet("background-color: #3498db; color: white; padding: 20px; border-radius: 5px; font-size: 12px;")
+        
+        logo_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        logo_label.setFixedSize(100, 100)  # Fixed size to prevent expansion
+        left_layout.addWidget(logo_label)
+        left_layout.addStretch()
+        
+        header_layout.addWidget(left_container)
+        
+        # Center title - this will now be truly centered
+        title_container = QWidget()
+        title_container.setFixedHeight(80)  # Fixed height to match logo container
+        title_container_layout = QVBoxLayout(title_container)
+        title_container_layout.setContentsMargins(0, 10, 0, 10)
+        
+        title_label = QLabel("ParkIT")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setFont(QFont("Arial", 24, QFont.Bold))
-        title_label.setStyleSheet("color: #2c3e50; margin-bottom: 10px;")
-        main_layout.addWidget(title_label)
+        title_label.setFont(QFont("Arial", 20, QFont.Bold))  # Slightly smaller font
+        title_label.setStyleSheet("color: #2c3e50;")
+        title_container_layout.addWidget(title_label)
+        
+        header_layout.addWidget(title_container, 1)  # Give it stretch factor of 1
+        
+        # Right side spacer to balance the left side
+        right_container = QWidget()
+        right_container.setFixedWidth(120)  # Same width as left container
+        right_container.setFixedHeight(80)  # Fixed height to prevent expansion
+        header_layout.addWidget(right_container)
+        
+        # Set the header layout to not expand vertically
+        header_widget = QWidget()
+        header_widget.setLayout(header_layout)
+        header_widget.setFixedHeight(80)  # Fixed height for entire header
+        header_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        
+        main_layout.addWidget(header_widget)
+        
+        # Set size policies for instant resizing
+        central_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
         # Camera setup group
         camera_group = self.create_camera_setup_group()
@@ -59,12 +118,18 @@ class MainWindow(QMainWindow):
         # Video display and controls
         content_splitter = QSplitter(Qt.Horizontal)
         
+        # Disable splitter animations for instant resizing
+        content_splitter.setChildrenCollapsible(False)
+        content_splitter.setOpaqueResize(True)  # Resize immediately, not gradually
+        
         # Video display
         video_widget = self.create_video_display()
+        video_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         content_splitter.addWidget(video_widget)
         
         # Control panel
         control_panel = self.create_control_panel()
+        control_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         content_splitter.addWidget(control_panel)
         
         # Set splitter proportions
@@ -79,14 +144,18 @@ class MainWindow(QMainWindow):
         """Create the camera setup input group"""
         group = QGroupBox("Camera Setup")
         group.setFont(QFont("Arial", 12, QFont.Bold))
+        group.setFixedHeight(80)  # Fixed height to prevent expansion
+        group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
         layout = QHBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
         
         # RTSP URL input
         layout.addWidget(QLabel("RTSP URL:"))
         self.rtsp_input = QLineEdit()
         self.rtsp_input.setPlaceholderText("rtsp://username:password@ip:port/stream")
-        self.rtsp_input.setText("0")  # Default to webcam for testing
+        self.rtsp_input.setText("rtsp://admin:uetpeshawar123@10.110.130.231:554/Streaming/Channels/101")  # Default to webcam for testing
         layout.addWidget(self.rtsp_input)
         
         # Connect button
@@ -106,10 +175,14 @@ class MainWindow(QMainWindow):
     def create_video_display(self):
         """Create the video display area"""
         widget = QWidget()
+        widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout = QVBoxLayout()
+        layout.setContentsMargins(5, 5, 5, 5)
         
         # Interactive video widget
         self.video_widget = InteractiveVideoWidget()
+        self.video_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.video_widget.setMinimumSize(400, 300)  # Set minimum size for proper scaling
         self.video_widget.set_spot_manager(self.spot_manager)
         layout.addWidget(self.video_widget)
         
@@ -153,9 +226,9 @@ class MainWindow(QMainWindow):
         spots_tab = self.create_spots_tab()
         tab_widget.addTab(spots_tab, "Parking Spots")
         
-        # Car detection tab
+        # Vehicle detection tab
         detection_tab = self.create_detection_tab()
-        tab_widget.addTab(detection_tab, "Car Detection")
+        tab_widget.addTab(detection_tab, "Vehicle Detection")
         
         # Instructions tab
         instructions_tab = self.create_instructions_tab()
@@ -254,7 +327,7 @@ class MainWindow(QMainWindow):
         return widget
     
     def create_detection_tab(self):
-        """Create the car detection tab"""
+        """Create the vehicle detection tab"""
         widget = QWidget()
         layout = QVBoxLayout()
         
@@ -263,7 +336,7 @@ class MainWindow(QMainWindow):
         detection_layout = QGridLayout()
         
         # Enable/Disable detection
-        self.detection_enabled_checkbox = QCheckBox("Enable Car Detection")
+        self.detection_enabled_checkbox = QCheckBox("Enable Vehicle Detection")
         self.detection_enabled_checkbox.toggled.connect(self.on_detection_enabled_changed)
         detection_layout.addWidget(self.detection_enabled_checkbox, 0, 0, 1, 2)
         
@@ -306,7 +379,7 @@ class MainWindow(QMainWindow):
         stats_layout = QGridLayout()
         
         # Statistics labels
-        self.current_cars_label = QLabel("Current Cars: 0")
+        self.current_cars_label = QLabel("Current Vehicles: 0")
         self.total_detections_label = QLabel("Total Detections: 0")
         self.detection_fps_label = QLabel("Detection FPS: 0")
         self.model_status_label = QLabel("Model Status: Not Loaded")
@@ -327,9 +400,9 @@ class MainWindow(QMainWindow):
         info_text.setReadOnly(True)
         info_text.setMaximumHeight(200)
         info_text.setHtml("""
-        <h4>Car Detection Features:</h4>
-        <ul>
-            <li><strong>YOLOv11 Model:</strong> Uses COCO-trained model for car detection</li>
+                        <h4>Vehicle Detection Features:</h4>
+                <ul>
+                <li><strong>YOLOv11 Model:</strong> Uses COCO-trained model for vehicle detection (cars, trucks, buses, motorcycles, trains)</li>
             <li><strong>Real-time Processing:</strong> Detects cars in live video feed</li>
             <li><strong>Automatic Occupancy:</strong> Updates parking spot status based on detections</li>
             <li><strong>Configurable Settings:</strong> Adjust confidence and overlap thresholds</li>
@@ -363,7 +436,7 @@ class MainWindow(QMainWindow):
         instructions_text = QTextEdit()
         instructions_text.setReadOnly(True)
         instructions_text.setText("""
-PHASE 3: Car Detection & Real-time Parking Management
+                PHASE 3: Vehicle Detection & Real-time Parking Management
 
 1. CAMERA SETUP:
    - Enter RTSP URL: rtsp://user:pass@ip:port/stream
@@ -378,9 +451,9 @@ PHASE 3: Car Detection & Real-time Parking Management
    - Enter a name for the parking spot
    - Spots are automatically saved for this camera
 
-3. CAR DETECTION:
-   - Go to 'Car Detection' tab
-   - Enable car detection with checkbox
+3. VEHICLE DETECTION:
+   - Go to 'Vehicle Detection' tab
+   - Enable vehicle detection with checkbox
    - Adjust confidence threshold (lower = more detections)
    - Set detection interval (how often to detect)
    - Configure overlap threshold (for spot occupancy)
@@ -390,7 +463,7 @@ PHASE 3: Car Detection & Real-time Parking Management
    - Green boxes show detected cars with confidence scores
    - Parking spots automatically update:
      * Green spots = Vacant
-     * Red spots = Occupied (car detected)
+            * Red spots = Occupied (vehicle detected)
    - View occupancy stats in Parking Spots tab
    - Status bar shows real-time occupancy counts
 
@@ -441,7 +514,7 @@ TIPS:
         self.spot_manager.spot_selected.connect(self.on_spot_selected)
         self.spot_manager.camera_changed.connect(self.on_camera_changed)
         
-        # Car detection manager signals
+        # Vehicle detection manager signals
         self.car_detection_manager.detections_updated.connect(self.on_detections_updated)
         self.car_detection_manager.occupancy_updated.connect(self.on_occupancy_updated)
         
@@ -455,7 +528,7 @@ TIPS:
     @pyqtSlot(np.ndarray)
     def update_frame(self, frame):
         """Update the video display with new frame"""
-        # Process frame through car detection if enabled
+        # Process frame through vehicle detection if enabled
         if hasattr(self, 'car_detection_manager'):
             processed_frame = self.car_detection_manager.process_frame(frame)
             self.video_widget.set_frame(processed_frame)
@@ -900,7 +973,7 @@ Total Cameras: {total_cameras} cameras configured
                     self.car_detection_manager.set_enabled(True)
     
     def initialize_detection_system(self):
-        """Initialize the car detection system"""
+        """Initialize the vehicle detection system"""
         if self.car_detection_manager.initialize():
             self.model_status_label.setText("Model Status: Loaded Successfully")
             self.model_status_label.setStyleSheet("color: #27ae60; font-weight: bold;")
@@ -913,12 +986,11 @@ Total Cameras: {total_cameras} cameras configured
             if hasattr(self, 'detection_enabled_checkbox'):
                 self.detection_enabled_checkbox.setEnabled(False)
     
-    # Car detection signal handlers
     def on_detection_enabled_changed(self, enabled):
         """Handle detection enabled/disabled"""
         self.car_detection_manager.set_enabled(enabled)
         status = "Enabled" if enabled else "Disabled"
-        self.statusBar().showMessage(f"Car detection {status.lower()}")
+        self.statusBar().showMessage(f"Vehicle detection {status.lower()}")
     
     def on_confidence_changed(self, value):
         """Handle confidence threshold change"""
@@ -938,9 +1010,9 @@ Total Cameras: {total_cameras} cameras configured
     
     @pyqtSlot(list)
     def on_detections_updated(self, detections):
-        """Handle updated car detections"""
+        """Handle updated vehicle detections"""
         stats = self.car_detection_manager.get_detection_stats()
-        self.current_cars_label.setText(f"Current Cars: {stats['current_cars']}")
+        self.current_cars_label.setText(f"Current Vehicles: {stats['current_vehicles']}")
         self.total_detections_label.setText(f"Total Detections: {stats['total_detections']}")
         self.detection_fps_label.setText(f"Detection FPS: {stats['detection_fps']}")
     
@@ -967,7 +1039,7 @@ Total Cameras: {total_cameras} cameras configured
     def closeEvent(self, event):
         """Handle application close event"""
         try:
-            # Disable car detection first
+            # Disable vehicle detection first
             if hasattr(self, 'car_detection_manager'):
                 self.car_detection_manager.set_enabled(False)
                 # Wait for detection worker to finish

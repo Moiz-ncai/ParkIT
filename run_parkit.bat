@@ -1,5 +1,7 @@
 @echo off
-echo Starting ParkIT - Parking Management System
+echo ==========================================
+echo  ParkIT - Parking Management System v3.0
+echo  Production Ready - Car Detection Enabled
 echo ==========================================
 echo.
 

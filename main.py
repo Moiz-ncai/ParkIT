@@ -34,7 +34,7 @@ def check_dependencies():
     try:
         from ultralytics import YOLO
     except ImportError:
-        missing_deps.append("ultralytics (for car detection)")
+        missing_deps.append("ultralytics (for vehicle detection)")
     
     try:
         import torch
@@ -65,6 +65,13 @@ def main():
     
     # Create QApplication
     app = QApplication(sys.argv)
+    
+    # Disable animations for instant resizing behavior
+    app.setEffectEnabled(Qt.UI_AnimateMenu, False)
+    app.setEffectEnabled(Qt.UI_AnimateCombo, False)
+    app.setEffectEnabled(Qt.UI_AnimateTooltip, False)
+    app.setEffectEnabled(Qt.UI_FadeMenu, False)
+    app.setEffectEnabled(Qt.UI_FadeTooltip, False)
     
     # Set application properties
     app.setApplicationName("ParkIT")
