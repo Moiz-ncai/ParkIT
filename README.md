@@ -4,7 +4,7 @@
 
 ## Overview
 
-ParkIT is designed to help you monitor parking spaces through IP cameras, detect occupied/vacant spots, and provide real-time parking occupancy analysis. The application provides a complete solution for parking management with an intuitive interface and powerful AI-driven detection capabilities.
+ParkIT is designed to help you monitor parking spaces through IP cameras, detect occupied/vacant spots, and provide real-time parking occupancy analysis. The application provides a complete solution for parking management with an intuitive interface and powerful AI-driven vehicle detection capabilities.
 
 **Current Production Version: 3.0**
 
@@ -31,26 +31,31 @@ ParkIT is designed to help you monitor parking spaces through IP cameras, detect
 - Persistent storage with multi-camera support (JSON format)
 - Visual spot overlay on video feed with camera context
 
-✅ **YOLOv11 Vehicle Detection**
-- Real-time vehicle detection using COCO-trained YOLOv11 model (cars, trucks, buses, motorcycles, trains)
+✅ **YOLOv11 Vehicle Detection** (COMPLETED)
+- Real-time vehicle detection using COCO-trained YOLOv11 model
+- **5 Vehicle Types Supported**: Cars, Trucks, Buses, Motorcycles, Trains
 - Configurable confidence threshold and detection interval
 - Multi-threaded processing for smooth GUI performance
-- Visual bounding boxes with confidence scores
+- Visual bounding boxes with vehicle type and confidence scores
 - Detection statistics and FPS monitoring
+- Automatic occupancy analysis based on vehicle detection
 
-✅ **Real-time Parking Occupancy**
+✅ **Real-time Parking Occupancy** (COMPLETED)
 - Automatic parking spot status updates (Occupied/Vacant)
 - Intelligent overlap detection for spot occupancy
 - Color-coded parking spots (Green=Vacant, Red=Occupied)
 - Real-time occupancy statistics and counts
 - Camera-specific occupancy monitoring
+- Configurable overlap threshold for accurate detection
 
-✅ **Modern GUI**
+✅ **Modern Professional GUI**
 - Clean, intuitive interface with tabbed design
+- **Centered title with company branding** and professional logo integration
 - Real-time video streaming with detection overlay
-- Car Detection tab with configurable settings
-- Interactive video controls
-- Responsive design with status indicators
+- Vehicle Detection tab with configurable settings
+- Interactive video controls with instant window resizing
+- Responsive design with optimized layout management
+- **Fixed header sizing** preventing expansion in fullscreen mode
 - Comprehensive statistics display
 
 ## Planned Features (Coming Soon)
@@ -149,7 +154,7 @@ python main.py
    - Spots are stored persistently per camera IP/URL
    - Statistics show current camera info and total cameras configured
 
-### Car Detection and Real-time Monitoring
+### Vehicle Detection and Real-time Monitoring
 
 1. **Enable Vehicle Detection**:
    - Go to the "Vehicle Detection" tab
@@ -167,6 +172,7 @@ python main.py
 
 3. **Monitor Real-time Status**:
    - **Video Feed**: Green bounding boxes show detected vehicles with confidence scores and vehicle type
+   - **Vehicle Types Detected**: Cars, Trucks, Buses, Motorcycles, Trains
    - **Parking Spots**: Automatically update colors (Green=Vacant, Red=Occupied)
    - **Statistics**: View current vehicles, total detections, and detection FPS
    - **Status Bar**: Shows real-time occupancy counts
@@ -190,7 +196,7 @@ ParkIT/
 ├── main.py                          # Application entry point
 ├── camera_manager.py                # Camera connection and streaming
 ├── parking_spot_manager.py          # Parking spot management and persistence
-├── car_detection_manager.py         # YOLOv11 car detection and occupancy analysis
+├── car_detection_manager.py         # YOLOv11 vehicle detection and occupancy analysis
 ├── assets/
 │   └── company_logo.png             # Company logo for branding
 ├── gui/
@@ -199,8 +205,10 @@ ParkIT/
 │   └── interactive_video_widget.py  # Interactive video display with drawing
 ├── requirements.txt                 # Python dependencies
 ├── run_parkit.bat                  # Windows launcher script
-├── yolo11n.pt                      # YOLOv11 model weights (auto-downloaded)
+├── yolo11s.pt                      # YOLOv11 model weights (auto-downloaded)
+├── yolo11s_openvino_model/         # Optimized model files (auto-generated)
 ├── parking_spots.json              # Parking spot data (auto-generated)
+├── PRODUCTION_INFO.md              # Production deployment guide
 └── README.md                       # This file
 ```
 
@@ -253,23 +261,35 @@ The application is designed with modularity in mind:
 
 ## Future Roadmap
 
+### Phase 1: Basic GUI and Camera Connection ✅ COMPLETED
+- [x] PyQt5 interface
+- [x] RTSP camera integration
+- [x] Live video streaming
+- [x] Basic controls and status display
+
 ### Phase 2: Parking Spot Configuration ✅ COMPLETED
 - [x] Interactive polygon drawing tool
 - [x] Parking spot persistence
 - [x] Multiple parking spot management
 - [x] Visual feedback and selection
+- [x] Camera-specific spot management
 
-### Phase 3: AI Detection
-- [ ] YOLOv11 integration
-- [ ] License plate detection
-- [ ] OCR implementation
-- [ ] Real-time processing optimization
+### Phase 3: AI Vehicle Detection ✅ COMPLETED
+- [x] YOLOv11 integration
+- [x] Real-time vehicle detection (5 vehicle types)
+- [x] Automatic occupancy analysis
+- [x] Multi-threaded processing optimization
+- [x] Configurable detection parameters
 
-### Phase 4: Advanced Features
+### Phase 4: Advanced Features (Coming Next)
+- [ ] License plate detection and OCR
+- [ ] Historical analytics and reporting
 - [ ] Database integration
 - [ ] Web dashboard
 - [ ] Mobile app companion
 - [ ] Cloud synchronization
+- [ ] Email/SMS notifications
+- [ ] REST API for external integration
 
 ## License
 
