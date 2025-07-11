@@ -29,7 +29,7 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class UserLogin(BaseModel):
@@ -58,7 +58,7 @@ class PlazaResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # Parking Area Schemas
@@ -83,7 +83,7 @@ class ParkingAreaResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # Parking Spot Schemas
@@ -119,7 +119,7 @@ class ParkingSpotResponse(BaseModel):
     last_updated: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class ParkingSpotUpdate(BaseModel):
@@ -154,7 +154,7 @@ class CameraResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # Occupancy History Schemas
@@ -174,7 +174,7 @@ class OccupancyResponse(BaseModel):
     confidence_score: Optional[float]
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # Reservation Schemas
@@ -201,7 +201,7 @@ class ReservationResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # Combined response schemas

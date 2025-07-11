@@ -1,304 +1,263 @@
-# ParkIT - Parking Management System v3.0
+# ParkIT Platform
 
-🚀 **Production Ready** - A modern PyQt5-based application for intelligent parking management using IP cameras, computer vision, and machine learning.
+**Comprehensive parking management platform with real-time vehicle detection and multi-tenant architecture.**
 
-## Overview
+## 🎯 Platform Overview
 
-ParkIT is designed to help you monitor parking spaces through IP cameras, detect occupied/vacant spots, and provide real-time parking occupancy analysis. The application provides a complete solution for parking management with an intuitive interface and powerful AI-driven vehicle detection capabilities.
+ParkIT Platform transforms parking management through:
+- **Plaza Management System** for parking lot operators
+- **Consumer Mobile Apps** for parking discovery and reservations
+- **Real-time Vehicle Detection** with AI-powered occupancy monitoring
+- **Centralized Backend** with multi-tenant database architecture
 
-**Current Production Version: 3.0**
+## 🏗️ Platform Architecture
 
-## Features (Production Ready)
+```
+┌─────────────────────┐    ┌─────────────────────┐
+│   Plaza Management  │    │   Consumer Mobile   │
+│      Application    │    │    Applications     │
+└─────────────────────┘    └─────────────────────┘
+           │                          │
+           └──────────┬─────────────────┘
+                      │
+        ┌─────────────────────────────────┐
+        │       FastAPI Backend           │
+        │   (Multi-tenant Database)       │
+        └─────────────────────────────────┘
+                      │
+        ┌─────────────────────────────────┐
+        │   Real-time Detection Service   │
+        │      (YOLO + OpenCV)           │
+        └─────────────────────────────────┘
+                      │
+        ┌─────────────────────────────────┐
+        │      Camera Infrastructure      │
+        │     (RTSP Streams)             │
+        └─────────────────────────────────┘
+```
 
-✅ **Camera Management**
-- RTSP IP camera connection
-- Live video feed display
-- Connection status monitoring
-- Camera information display
+## 🚀 Current Implementation Status
 
-✅ **Interactive Parking Spot Setup**
-- Point-and-click polygon drawing
-- Real-time visual feedback
-- Parking spot naming and labeling
-- Spot selection and highlighting
+### ✅ **Phase 1: Backend Foundation (COMPLETED)**
+- **FastAPI REST API** with automatic OpenAPI documentation
+- **PostgreSQL database** with comprehensive data models
+- **JWT authentication** with role-based access control
+- **Multi-tenant architecture** supporting multiple plaza owners
+- **Real-time occupancy API** for vehicle detection integration
 
-✅ **Camera-Specific Parking Spot Management**
-- Each camera maintains its own parking spot configuration
-- Automatic loading/saving of spots per camera IP/URL
-- Tabbed interface for organization
-- Comprehensive spot table with camera status
-- Edit, delete, and clear operations per camera
-- Persistent storage with multi-camera support (JSON format)
-- Visual spot overlay on video feed with camera context
+### 🔄 **Phase 2: Detection Service Integration (IN PROGRESS)**
+- Extract vehicle detection logic into microservice
+- API integration for real-time occupancy updates
+- Camera management and monitoring
 
-✅ **YOLOv11 Vehicle Detection** (COMPLETED)
-- Real-time vehicle detection using COCO-trained YOLOv11 model
-- **5 Vehicle Types Supported**: Cars, Trucks, Buses, Motorcycles, Trains
-- Configurable confidence threshold and detection interval
-- Multi-threaded processing for smooth GUI performance
-- Visual bounding boxes with vehicle type and confidence scores
-- Detection statistics and FPS monitoring
-- Automatic occupancy analysis based on vehicle detection
+### ⏳ **Phase 3: Plaza Management Application (PLANNED)**
+- Web-based or desktop application for plaza owners
+- Parking spot mapping and configuration
+- Real-time monitoring dashboard
+- Analytics and reporting
 
-✅ **Real-time Parking Occupancy** (COMPLETED)
-- Automatic parking spot status updates (Occupied/Vacant)
-- Intelligent overlap detection for spot occupancy
-- Color-coded parking spots (Green=Vacant, Red=Occupied)
-- Real-time occupancy statistics and counts
-- Camera-specific occupancy monitoring
-- Configurable overlap threshold for accurate detection
+### ⏳ **Phase 4: Consumer Mobile Application (PLANNED)**
+- Flutter/React Native mobile app
+- Plaza search and discovery
+- Real-time availability display
+- Parking spot reservations
 
-✅ **Modern Professional GUI**
-- Clean, intuitive interface with tabbed design
-- **Centered title with company branding** and professional logo integration
-- Real-time video streaming with detection overlay
-- Vehicle Detection tab with configurable settings
-- Interactive video controls with instant window resizing
-- Responsive design with optimized layout management
-- **Fixed header sizing** preventing expansion in fullscreen mode
-- Comprehensive statistics display
+## 📊 Core Features
 
-## Planned Features (Coming Soon)
+### **For Plaza Owners:**
+- Multi-location plaza management
+- Interactive parking spot mapping
+- Real-time occupancy monitoring
+- Historical analytics and reporting
+- Camera configuration and status
+- Revenue tracking and billing
 
-🚧 **License Plate Recognition**
-- License plate detection and localization
-- OCR for license plate text extraction
-- Vehicle identification and tracking
+### **For Consumers:**
+- Location-based plaza discovery
+- Real-time parking availability
+- Advance parking reservations
+- Navigation integration
+- Payment processing
+- Parking history
 
-🚧 **Advanced Analytics**
-- Parking duration tracking
-- Historical occupancy data
-- Usage patterns and statistics
-- Export capabilities and reporting
+### **For Administrators:**
+- Multi-tenant system management
+- User and plaza oversight
+- System analytics and monitoring
+- Platform configuration
 
-🚧 **Enhanced Features**
-- Multiple detection models support
-- Email/SMS notifications
-- Database integration
-- REST API for external integration
+## 🛠️ Technology Stack
 
-## Installation
+### **Backend Services**
+- **FastAPI** - High-performance Python web framework
+- **PostgreSQL** - Primary database with PostGIS for geolocation
+- **SQLAlchemy** - ORM for database operations
+- **JWT** - Authentication and authorization
+- **Redis** - Caching and real-time features
 
-### Prerequisites
+### **Detection & Processing**
+- **YOLOv11** - Real-time vehicle detection
+- **OpenCV** - Computer vision processing
+- **Python** - Detection service implementation
+- **RTSP** - Camera stream integration
 
-- Python 3.7 or higher
-- Webcam or IP camera (for testing)
+### **Frontend Applications**
+- **React/Vue.js** - Plaza management web interface
+- **Flutter/React Native** - Consumer mobile applications
+- **Material-UI** - Component library for consistency
 
-### Install Dependencies
+## 🗄️ Database Models
 
+### **Core Entities:**
+- **Users** - Multi-role user management (admin, plaza_owner, plaza_staff, consumer)
+- **Plazas** - Parking locations with geographic data
+- **Parking Areas** - Sections within plazas (floors, zones)
+- **Parking Spots** - Individual spaces with polygon coordinates
+- **Cameras** - RTSP streams with coverage mapping
+- **Occupancy History** - Real-time detection data with confidence scores
+- **Reservations** - Consumer booking system
+
+## 🔌 API Endpoints
+
+### **Authentication**
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - User authentication
+- `GET /api/v1/auth/me` - Current user profile
+
+### **Plaza Management**
+- `GET /api/v1/plazas/` - List plazas (filtered by permissions)
+- `POST /api/v1/plazas/` - Create new plaza
+- `GET /api/v1/plazas/{id}` - Plaza details with areas and cameras
+- `PUT /api/v1/plazas/{id}` - Update plaza information
+
+### **Parking Management**
+- `POST /api/v1/spots/areas/{area_id}/spots` - Create parking spot
+- `GET /api/v1/spots/areas/{area_id}/spots` - List spots in area
+- `PUT /api/v1/spots/{spot_id}` - Update spot configuration
+- `POST /api/v1/spots/occupancy` - Record occupancy change
+
+### **Real-time Data**
+- `GET /api/v1/spots/plaza/{plaza_id}/availability` - Current availability
+- `GET /api/v1/spots/{spot_id}/occupancy` - Occupancy history
+- WebSocket connections for live updates
+
+## 🚀 Quick Start
+
+### **Backend Setup**
+
+1. **Prerequisites:**
+   ```bash
+   - Python 3.8+
+   - PostgreSQL 12+
+   - Redis (optional)
+   ```
+
+2. **Installation:**
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   cp env.example .env
+   # Configure database connection in .env
+   ```
+
+3. **Database Setup:**
+   ```sql
+   CREATE DATABASE parkit_platform;
+   CREATE USER parkit_user WITH PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE parkit_platform TO parkit_user;
+   ```
+
+4. **Start Backend:**
+   ```bash
+   python run_backend.py
+   ```
+
+5. **Access API Documentation:**
+   - Swagger UI: http://localhost:8000/docs
+   - ReDoc: http://localhost:8000/redoc
+
+### **Testing the API**
+
+Register a plaza owner:
 ```bash
-pip install -r requirements.txt
+curl -X POST "http://localhost:8000/api/v1/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "owner@plaza.com",
+    "password": "secure123",
+    "user_type": "plaza_owner"
+  }'
 ```
 
-### Dependencies
+## 📈 Development Roadmap
 
-- `PyQt5>=5.15.7` - GUI framework
-- `opencv-python>=4.8.0` - Computer vision and camera handling
-- `numpy>=1.21.0` - Numerical computing
-- `Pillow>=10.0.0` - Image processing
-- `ultralytics>=8.0.0` - YOLOv11 model and inference engine
-- `torch>=2.0.0` - PyTorch deep learning framework
-- `torchvision>=0.15.0` - Computer vision utilities for PyTorch
+### **Immediate Next Steps:**
+1. **Database Testing** - Validate all models and relationships
+2. **Detection Service** - Extract current detection logic to microservice
+3. **API Integration** - Connect detection service to backend
+4. **Plaza Management UI** - Basic web interface for plaza configuration
 
-## Usage
+### **Short Term (1-3 months):**
+1. **Enhanced Plaza Management** - Full-featured admin interface
+2. **Consumer MVP** - Basic mobile app for parking discovery
+3. **Payment Integration** - Reservation and billing system
+4. **Analytics Dashboard** - Usage statistics and reporting
 
-### Running the Application
+### **Long Term (3-12 months):**
+1. **Advanced Features** - AI-powered parking predictions
+2. **Third-party Integrations** - Maps, navigation, payment providers
+3. **Enterprise Features** - White-label solutions, API partnerships
+4. **Global Expansion** - Multi-language, multi-currency support
 
-```bash
-python main.py
-```
+## 🔐 Security & Compliance
 
-### Camera Setup
+- **JWT Authentication** with secure token management
+- **Role-based Access Control** with fine-grained permissions
+- **Input Validation** using Pydantic schemas
+- **SQL Injection Protection** via SQLAlchemy ORM
+- **CORS Configuration** for secure cross-origin requests
+- **Password Encryption** using bcrypt hashing
 
-1. **Testing with Webcam**:
-   - Leave the default value "0" in the RTSP URL field
-   - Click "Connect" to use your default webcam
+## 📊 Business Model
 
-2. **Using IP Camera**:
-   - Enter your RTSP URL in the format:
-     ```
-     rtsp://username:password@ip:port/stream
-     ```
-   - Example: `rtsp://admin:password123@192.168.1.100:554/stream1`
-   - Click "Connect" to establish connection
+### **Revenue Streams:**
+- **SaaS Subscriptions** for plaza owners ($99-299/month)
+- **Transaction Fees** on consumer reservations (3-5%)
+- **Premium Features** - Advanced analytics, priority support
+- **Enterprise Licensing** - White-label and API access
 
-### Interface Overview
+### **Target Market:**
+- Shopping centers and malls
+- Airports and transportation hubs
+- Hospitals and medical facilities
+- Universities and educational institutions
+- Commercial office buildings
 
-- **Camera Setup**: Enter RTSP URL and connect/disconnect controls
-- **Interactive Video Display**: Live camera feed with polygon drawing and vehicle detection overlay
-- **Drawing Controls**: Start/cancel drawing, visibility toggle
-- **Tabbed Control Panel**:
-  - **Status Tab**: Connection status and camera information
-  - **Parking Spots Tab**: Spot management table with occupancy status
-  - **Vehicle Detection Tab**: Detection controls, statistics, and settings
-  - **Instructions Tab**: Comprehensive usage guidelines
+## 🤝 Contributing
 
-### Camera-Specific Parking Spot Setup
-
-1. **Connect Camera**: Establish RTSP connection or use webcam (0)
-   - Each camera automatically loads its saved parking spots
-   - New cameras start with no spots defined
-2. **Draw Parking Spots**:
-   - Click "Draw New Spot" button
-   - Left-click on video to add polygon points
-   - Right-click to finish and name the spot
-   - Spots are automatically saved for this specific camera
-3. **Manage Camera-Specific Spots**:
-   - View spots for current camera in the Parking Spots tab
-   - Click spots on video to select them
-   - Edit names, delete spots, or clear all (for current camera only)
-   - Toggle visibility with checkbox
-4. **Switch Between Cameras**:
-   - Disconnect and connect to different cameras
-   - Each camera loads its own unique parking spot configuration
-   - Spots are stored persistently per camera IP/URL
-   - Statistics show current camera info and total cameras configured
-
-### Vehicle Detection and Real-time Monitoring
-
-1. **Enable Vehicle Detection**:
-   - Go to the "Vehicle Detection" tab
-   - Check "Enable Vehicle Detection" to start detection
-   - The YOLOv11 model will automatically download on first run
-
-2. **Configure Detection Settings**:
-   - **Confidence Threshold**: Adjust sensitivity (0.10-0.95)
-     - Lower values = more detections, potential false positives
-     - Higher values = fewer detections, more accuracy
-   - **Detection Interval**: How often to run detection (0.1-10.0 seconds)
-     - Lower intervals = more frequent updates, higher CPU usage
-   - **Overlap Threshold**: Minimum overlap for spot occupancy (0.10-0.90)
-     - Higher values = stricter occupancy detection
-
-3. **Monitor Real-time Status**:
-   - **Video Feed**: Green bounding boxes show detected vehicles with confidence scores and vehicle type
-   - **Vehicle Types Detected**: Cars, Trucks, Buses, Motorcycles, Trains
-   - **Parking Spots**: Automatically update colors (Green=Vacant, Red=Occupied)
-   - **Statistics**: View current vehicles, total detections, and detection FPS
-   - **Status Bar**: Shows real-time occupancy counts
-
-4. **Occupancy Management**:
-   - View occupancy status in the Parking Spots tab
-   - Status column shows Occupied/Vacant with color coding
-   - Statistics display current camera occupancy summary
-   - Each camera maintains independent detection state
-
-### Keyboard Shortcuts
-
-- **ESC**: Cancel current drawing operation
-- **Left-click**: Add polygon point (drawing mode) or select spot (view mode)
-- **Right-click**: Finish polygon drawing
-
-## File Structure
-
-```
-ParkIT/
-├── main.py                          # Application entry point
-├── camera_manager.py                # Camera connection and streaming
-├── parking_spot_manager.py          # Parking spot management and persistence
-├── car_detection_manager.py         # YOLOv11 vehicle detection and occupancy analysis
-├── assets/
-│   └── company_logo.png             # Company logo for branding
-├── gui/
-│   ├── __init__.py
-│   ├── main_window.py               # Main GUI window with tabbed interface
-│   └── interactive_video_widget.py  # Interactive video display with drawing
-├── requirements.txt                 # Python dependencies
-├── run_parkit.bat                  # Windows launcher script
-├── yolo11s.pt                      # YOLOv11 model weights (auto-downloaded)
-├── yolo11s_openvino_model/         # Optimized model files (auto-generated)
-├── parking_spots.json              # Parking spot data (auto-generated)
-├── PRODUCTION_INFO.md              # Production deployment guide
-└── README.md                       # This file
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Camera Connection Failed**:
-   - Verify RTSP URL format
-   - Check network connectivity
-   - Ensure camera is accessible
-   - Try with webcam (use "0") for testing
-
-2. **Application Won't Start**:
-   - Install all required dependencies
-   - Check Python version (3.7+)
-   - Run `python main.py` to see error details
-
-3. **Video Display Issues**:
-   - Update graphics drivers
-   - Try different camera resolutions
-   - Check camera compatibility
-
-### RTSP URL Formats
-
-Different camera brands use different RTSP URL formats:
-
-- **Generic**: `rtsp://username:password@ip:port/stream`
-- **Hikvision**: `rtsp://username:password@ip:554/Streaming/Channels/101`
-- **Dahua**: `rtsp://username:password@ip:554/cam/realmonitor?channel=1&subtype=0`
-- **Axis**: `rtsp://username:password@ip/axis-media/media.amp`
-
-## Development
-
-### Adding New Features
-
-The application is designed with modularity in mind:
-
-- `camera_manager.py`: Handles all camera operations
-- `gui/main_window.py`: Main interface and user interactions
-- Additional modules can be added for AI detection, database management, etc.
-
-### Contributing
-
+### **Development Setup:**
 1. Fork the repository
-2. Create a feature branch
-3. Add your improvements
-4. Test thoroughly
-5. Submit a pull request
+2. Create feature branch from `full-platform`
+3. Follow API design patterns in existing code
+4. Add comprehensive tests for new features
+5. Update documentation for API changes
 
-## Future Roadmap
+### **Code Standards:**
+- Follow FastAPI best practices
+- Use type hints for all functions
+- Write comprehensive docstrings
+- Maintain database migration scripts
+- Test all endpoints using Swagger UI
 
-### Phase 1: Basic GUI and Camera Connection ✅ COMPLETED
-- [x] PyQt5 interface
-- [x] RTSP camera integration
-- [x] Live video streaming
-- [x] Basic controls and status display
+## 📞 Support & Documentation
 
-### Phase 2: Parking Spot Configuration ✅ COMPLETED
-- [x] Interactive polygon drawing tool
-- [x] Parking spot persistence
-- [x] Multiple parking spot management
-- [x] Visual feedback and selection
-- [x] Camera-specific spot management
-
-### Phase 3: AI Vehicle Detection ✅ COMPLETED
-- [x] YOLOv11 integration
-- [x] Real-time vehicle detection (5 vehicle types)
-- [x] Automatic occupancy analysis
-- [x] Multi-threaded processing optimization
-- [x] Configurable detection parameters
-
-### Phase 4: Advanced Features (Coming Next)
-- [ ] License plate detection and OCR
-- [ ] Historical analytics and reporting
-- [ ] Database integration
-- [ ] Web dashboard
-- [ ] Mobile app companion
-- [ ] Cloud synchronization
-- [ ] Email/SMS notifications
-- [ ] REST API for external integration
-
-## License
-
-This project is developed for educational and commercial use. Please ensure you have proper permissions for using IP cameras and comply with local privacy laws.
-
-## Support
-
-For issues, questions, or feature requests, please create an issue in the project repository or contact the development team.
+- **Technical Documentation:** `/backend/README.md`
+- **Implementation Guide:** `PLATFORM_IMPLEMENTATION_GUIDE.md`
+- **API Documentation:** http://localhost:8000/docs (when running)
+- **Architecture Diagrams:** Available in implementation guide
 
 ---
 
-**ParkIT - Making parking management intelligent and efficient.** 
+**ParkIT Platform v1.0** - Revolutionizing parking management through intelligent automation and real-time insights.
+
+Built with ❤️ using FastAPI, PostgreSQL, YOLOv11, and modern web technologies. 
