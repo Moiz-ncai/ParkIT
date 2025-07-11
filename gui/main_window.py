@@ -1,4 +1,5 @@
 import sys
+import os
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                             QLabel, QLineEdit, QPushButton, QFrame, QTextEdit,
                             QGridLayout, QGroupBox, QSizePolicy, QSplitter,
@@ -15,7 +16,14 @@ from car_detection_manager import CarDetectionManager
 from gui.interactive_video_widget import InteractiveVideoWidget
 
 
-
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 class MainWindow(QMainWindow):
@@ -64,7 +72,7 @@ class MainWindow(QMainWindow):
         # Company logo
         logo_label = QLabel()
         try:
-            logo_pixmap = QPixmap("assets/company_logo.png")
+            logo_pixmap = QPixmap(resource_path("assets/company_logo.png"))
             # Scale logo to bigger size while maintaining aspect ratio
             scaled_logo = logo_pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             logo_label.setPixmap(scaled_logo)

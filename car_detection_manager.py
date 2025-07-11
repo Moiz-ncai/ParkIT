@@ -1,15 +1,33 @@
+"""
+Vehicle Detection Manager for ParkIT
+Handles YOLOv11-based vehicle detection and parking spot occupancy analysis
+"""
+
+import sys
+import os
+import time
 import cv2
 import numpy as np
 from typing import List, Tuple, Dict, Optional
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer, QThread, pyqtSlot
-import time
 
+# Check if YOLO is available
+YOLO_AVAILABLE = True
 try:
     from ultralytics import YOLO
-    YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
     print("Warning: ultralytics not available. Vehicle detection will be disabled.")
+
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 class CarDetection:
@@ -42,12 +60,14 @@ class CarDetectionWorker(QThread):
             return False
         
         try:
-            # Load YOLOv11 model with COCO weights
-            self.model = YOLO('yolo11s_openvino_model/')  
-            print("YOLOv11 model loaded successfully")
+            # Load standard YOLOv11 model (will download if not present)
+            print("Loading YOLOv11 model...")
+            self.model = YOLO('yolo11s.pt')
+            print("✅ YOLOv11 model loaded successfully")
             return True
+            
         except Exception as e:
-            print(f"Error loading YOLOv11 model: {e}")
+            print(f"❌ Error loading YOLOv11 model: {e}")
             return False
     
     def set_frame(self, frame: np.ndarray):
