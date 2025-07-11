@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkIT Dashboard - Parking Management Platform</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner">
+            <i class="fas fa-car fa-2x"></i>
+            <p>Loading ParkIT Dashboard...</p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <div id="app" class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-parking"></i>
+                    <span>ParkIT</span>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="user-details">
+                        <span class="username" id="current-username">Plaza Owner</span>
+                        <span class="user-role" id="current-role">Downtown Plaza</span>
+                    </div>
+                </div>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard">
+                    <a href="#dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-page="parking-spots">
+                    <a href="#parking-spots">
+                        <i class="fas fa-th-large"></i>
+                        <span>Parking Spots</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-page="analytics">
+                    <a href="#analytics">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Analytics</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-page="detection">
+                    <a href="#detection">
+                        <i class="fas fa-video"></i>
+                        <span>Detection System</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-page="settings">
+                    <a href="#settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <div class="status-indicator" id="system-status">
+                        <span class="status-dot online"></span>
+                        <span>System Online</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="sidebar-toggle" id="sidebar-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="page-title" id="page-title">Dashboard Overview</h1>
+                </div>
+                <div class="header-right">
+                    <div class="last-updated">
+                        <i class="fas fa-clock"></i>
+                        <span id="last-updated">Last updated: --</span>
+                    </div>
+                    <button class="refresh-btn" id="refresh-btn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="notifications">
+                        <button class="notification-btn">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge" id="notification-count">3</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content Container -->
+            <div class="content-container">
+                <!-- Dashboard Overview Page -->
+                <div id="dashboard-page" class="page-content active">
+                    <!-- Key Metrics Cards -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon">
+                                <i class="fas fa-car"></i>
+                            </div>
+                            <div class="metric-content">
+                                <h3 class="metric-value" id="total-spots">--</h3>
+                                <p class="metric-label">Total Spots</p>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon occupied">
+                                <i class="fas fa-parking"></i>
+                            </div>
+                            <div class="metric-content">
+                                <h3 class="metric-value" id="occupied-spots">--</h3>
+                                <p class="metric-label">Occupied</p>
+                                <span class="metric-change" id="occupied-change">--</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon available">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="metric-content">
+                                <h3 class="metric-value" id="available-spots">--</h3>
+                                <p class="metric-label">Available</p>
+                                <span class="metric-change" id="available-change">--</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon revenue">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <div class="metric-content">
+                                <h3 class="metric-value" id="occupancy-rate">--</h3>
+                                <p class="metric-label">Occupancy Rate</p>
+                                <span class="metric-change" id="occupancy-change">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Overview -->
+                    <div class="dashboard-grid">
+                        <!-- Occupancy Chart -->
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3>Real-time Occupancy</h3>
+                                <div class="chart-controls">
+                                    <select id="time-range">
+                                        <option value="1h">Last Hour</option>
+                                        <option value="6h">Last 6 Hours</option>
+                                        <option value="24h" selected>Last 24 Hours</option>
+                                        <option value="7d">Last 7 Days</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <canvas id="occupancy-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Plaza Status -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Plaza Status</h3>
+                                <div class="status-indicator">
+                                    <span class="status-dot online"></span>
+                                    <span>Active</span>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="plaza-info">
+                                    <div class="info-item">
+                                        <label>Plaza Name:</label>
+                                        <span id="plaza-name">Downtown Plaza</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Address:</label>
+                                        <span id="plaza-address">123 Main Street, Downtown</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Detection Cameras:</label>
+                                        <span id="active-cameras">2 Active</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Last Detection:</label>
+                                        <span id="last-detection">2 minutes ago</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="quick-stats">
+                                    <div class="stat-item">
+                                        <i class="fas fa-car"></i>
+                                        <span>Vehicles Detected Today: <strong id="vehicles-today">127</strong></span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="fas fa-clock"></i>
+                                        <span>Avg. Parking Duration: <strong id="avg-duration">2.3 hrs</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Recent Activity</h3>
+                                <button class="view-all-btn">View All</button>
+                            </div>
+                            <div class="card-content">
+                                <div class="activity-list" id="recent-activity">
+                                    <!-- Activity items will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Health -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>System Health</h3>
+                                <div class="health-indicator excellent">
+                                    <span>Excellent</span>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="health-metrics">
+                                    <div class="health-item">
+                                        <div class="health-label">
+                                            <i class="fas fa-server"></i>
+                                            <span>Backend API</span>
+                                        </div>
+                                        <div class="health-status online">Online</div>
+                                    </div>
+                                    <div class="health-item">
+                                        <div class="health-label">
+                                            <i class="fas fa-robot"></i>
+                                            <span>Detection Service</span>
+                                        </div>
+                                        <div class="health-status online">Active</div>
+                                    </div>
+                                    <div class="health-item">
+                                        <div class="health-label">
+                                            <i class="fas fa-database"></i>
+                                            <span>Database</span>
+                                        </div>
+                                        <div class="health-status online">Connected</div>
+                                    </div>
+                                    <div class="health-item">
+                                        <div class="health-label">
+                                            <i class="fas fa-video"></i>
+                                            <span>Cameras</span>
+                                        </div>
+                                        <div class="health-status online">2/2 Active</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other pages will be added here -->
+                <div id="parking-spots-page" class="page-content">
+                    <h2>Parking Spots View - Coming Soon</h2>
+                </div>
+
+                <div id="analytics-page" class="page-content">
+                    <h2>Analytics - Coming Soon</h2>
+                </div>
+
+                <div id="detection-page" class="page-content">
+                    <h2>Detection System - Coming Soon</h2>
+                </div>
+
+                <div id="settings-page" class="page-content">
+                    <h2>Settings - Coming Soon</h2>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html> 
